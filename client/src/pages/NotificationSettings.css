@@ -1,0 +1,64 @@
+@import "../styles/publicBrandTokens.css";
+
+/* Shared provider/customer/admin notification preferences opt in; no global colors or consent defaults change. */
+.ology-settings-page {
+  background: var(--ology-brand-paper);
+  color: var(--ology-brand-ink);
+  font-family: var(--ology-brand-body);
+}
+.ology-settings-content { padding-bottom: 4rem; }
+.ology-settings-page .container h1 {
+  color: var(--ology-brand-deep);
+  font-family: var(--ology-brand-display);
+  letter-spacing: -.035em;
+}
+.ology-settings-page .container .text-muted-foreground { color: var(--ology-brand-muted); }
+.ology-settings-heading [data-slot="button"] { color: var(--ology-brand-deep); }
+.ology-settings-heading [data-slot="button"]:hover { background: #e6edd8; }
+
+.ology-settings-content [data-slot="card"] {
+  border-color: var(--ology-brand-line);
+  background: var(--ology-brand-surface);
+  box-shadow: 0 16px 42px -36px rgb(18 51 50 / 45%);
+}
+.ology-settings-content [data-slot="card"].ology-settings-relationship {
+  border-color: #cbdac7;
+  background: #eef2e7;
+}
+.ology-settings-relationship-icon { color: var(--ology-brand-deep); }
+.ology-settings-content [data-slot="card-title"],
+.ology-settings-content [data-slot="label"] { color: var(--ology-brand-deep); }
+.ology-settings-content [data-slot="card-description"] { color: var(--ology-brand-muted); }
+.ology-settings-content [data-slot="separator"] { background: var(--ology-brand-line); }
+.ology-settings-content [data-slot="switch"][data-state="checked"]:not(:disabled) {
+  background: var(--ology-brand-deep);
+}
+.ology-settings-content [data-slot="switch"][data-state="unchecked"]:not(:disabled) {
+  border-color: #718476;
+  background: #e6eae2;
+}
+/* Disabled SMS controls, coming-soon badges and the blocked-push error remain semantic. */
+.ology-settings-page .container [data-slot="button"].bg-primary {
+  background: var(--ology-brand-deep);
+  color: #fff;
+}
+.ology-settings-page .container [data-slot="button"].bg-primary:hover { background: #1b4842; }
+.ology-settings-content [data-slot="button"].border.bg-transparent {
+  border-color: #aebfad;
+  background: var(--ology-brand-surface);
+  color: var(--ology-brand-deep);
+}
+.ology-settings-content [data-slot="button"].border.bg-transparent:hover { background: #e6edd8; }
+.ology-settings-page .container :is(a, button, [role="switch"]):focus-visible {
+  outline: 3px solid var(--ology-brand-coral-hover);
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .ology-settings-content [data-slot="card-content"] > .flex.items-center.justify-between { gap: .75rem; }
+  .ology-settings-content [data-slot="card-content"] > .flex.items-center.justify-between > :first-child { min-width: 0; }
+  .ology-settings-content [data-slot="card-content"] p { overflow-wrap: anywhere; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ology-settings-page .container :is(a, button, [role="switch"]) { transition-duration: .01ms !important; }
+}

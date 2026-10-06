@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { NavHeader } from "@/components/shared/NavHeader";
+import "./NotificationSettings.css";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -91,7 +92,7 @@ export default function NotificationSettings() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-page">
+      <div className="ology-settings-page min-h-screen bg-page">
         <NavHeader />
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -102,7 +103,7 @@ export default function NotificationSettings() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-page">
+      <div className="ology-settings-page min-h-screen bg-page">
         <NavHeader />
         <div className="container py-16 text-center">
           <Bell className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -119,12 +120,12 @@ export default function NotificationSettings() {
   }
 
   return (
-    <div className="min-h-screen bg-page">
+    <div className="ology-settings-page min-h-screen bg-page">
       <NavHeader />
 
-      <div className="container max-w-2xl py-8">
+      <div className="ology-settings-content container max-w-2xl py-8">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="ology-settings-heading flex items-center gap-3 mb-6">
           <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -145,10 +146,10 @@ export default function NotificationSettings() {
             {/* Push Notifications */}
             <PushNotificationSettings />
 
-            <Card className="border-blue-100 bg-blue-50/40">
+            <Card className="ology-settings-relationship">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <ShieldCheck className="h-5 w-5 text-[#174a73]" />
+                  <ShieldCheck className="ology-settings-relationship-icon h-5 w-5" />
                   Provider relationship messages
                 </CardTitle>
                 <CardDescription>

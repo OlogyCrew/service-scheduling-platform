@@ -1,0 +1,58 @@
+@import "../styles/publicBrandTokens.css";
+
+/* Both billing-history routes opt in; financial data, badges, plan state and other routes do not. */
+.ology-billing-page {
+  background: var(--ology-brand-paper);
+  color: var(--ology-brand-ink);
+  font-family: var(--ology-brand-body);
+}
+.ology-billing-content { padding-bottom: 4rem; }
+.ology-billing-heading h1 {
+  color: var(--ology-brand-deep);
+  font-family: var(--ology-brand-display);
+  letter-spacing: -.035em;
+}
+.ology-billing-content .text-muted-foreground { color: var(--ology-brand-muted); }
+.ology-billing-heading [data-slot="button"] { color: var(--ology-brand-deep); }
+.ology-billing-heading [data-slot="button"]:hover { background: #e6edd8; }
+
+.ology-billing-content [data-slot="card"].ology-billing-summary {
+  border-color: #cbdac7;
+  background: #eef2e7;
+  box-shadow: 0 16px 42px -36px rgb(18 51 50 / 45%);
+}
+.ology-billing-summary-icon { background: #e1e9d7; }
+.ology-billing-summary-icon svg.text-primary { color: var(--ology-brand-deep); }
+.ology-billing-summary .font-medium { color: var(--ology-brand-deep); }
+.ology-billing-summary .flex.items-center.gap-3 > div { min-width: 0; }
+
+.ology-billing-content [data-slot="card"].ology-billing-transactions {
+  border-color: var(--ology-brand-line);
+  background: var(--ology-brand-surface);
+  box-shadow: 0 16px 42px -36px rgb(18 51 50 / 45%);
+}
+.ology-billing-transactions [data-slot="card-title"] { color: var(--ology-brand-deep); }
+.ology-billing-row { border-color: var(--ology-brand-line); }
+.ology-billing-row:hover { background: #f0f2e9; }
+.ology-billing-row .min-w-0 p { overflow-wrap: anywhere; }
+/* Paid, pending, failed, action-required and active status badges keep their original meaning. */
+.ology-billing-content [data-slot="button"].border.bg-transparent {
+  border-color: #aebfad;
+  background: var(--ology-brand-surface);
+  color: var(--ology-brand-deep);
+}
+.ology-billing-content [data-slot="button"].border.bg-transparent:hover { background: #e6edd8; }
+.ology-billing-content a.text-primary { color: var(--ology-brand-deep); }
+.ology-billing-content a.text-primary:hover { color: var(--ology-brand-coral-hover); }
+.ology-billing-content :is(a, button):focus-visible {
+  outline: 3px solid var(--ology-brand-coral-hover);
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .ology-billing-content .ology-billing-row { padding-inline: .75rem; }
+  .ology-billing-summary [data-slot="button"] { white-space: normal; height: auto; min-height: 2.25rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ology-billing-content :is(a, button), .ology-billing-row { transition-duration: .01ms !important; }
+}

@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { NavHeader } from "@/components/shared/NavHeader";
 import "@/components/customer/CustomerWorkspaceTheme.css";
+import "./BillingHistory.css";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -131,7 +132,7 @@ export default function CustomerBillingHistory() {
 
   if (!user) {
     return (
-      <div className="ology-customer-utility-surface min-h-screen bg-page">
+      <div className="ology-customer-utility-surface min-h-screen bg-page ology-billing-page">
         <NavHeader />
         <div className="container py-12 text-center">
           <p className="text-muted-foreground">Please log in to view billing history.</p>
@@ -149,13 +150,13 @@ export default function CustomerBillingHistory() {
   };
 
   return (
-    <div className="ology-customer-utility-surface min-h-screen bg-page">
+    <div className="ology-customer-utility-surface min-h-screen bg-page ology-billing-page">
       <NavHeader />
-      <div className="container max-w-4xl py-6 px-4">
+      <div className="ology-billing-content container max-w-4xl py-6 px-4">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="ology-billing-heading flex items-center gap-3 mb-6">
           <Link href="/customer/subscription">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Back to customer subscription">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
@@ -169,11 +170,11 @@ export default function CustomerBillingHistory() {
 
         {/* Current Plan Summary */}
         {subscriptionSummary.data && (
-          <Card className="mb-6 border-primary/20 bg-primary/5">
+          <Card className="ology-billing-summary mb-6 border-primary/20 bg-primary/5">
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="ology-billing-summary-icon w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                     <CreditCard className="h-5 w-5 text-primary" />
                   </div>
                   <div>
@@ -206,7 +207,7 @@ export default function CustomerBillingHistory() {
         )}
 
         {/* Billing Items */}
-        <Card>
+        <Card className="ology-billing-transactions">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -246,7 +247,7 @@ export default function CustomerBillingHistory() {
                {data.items.map((item, idx) => (
                  <div
                    key={item.id}
-                    className={`flex flex-col gap-2 p-4 rounded-lg hover:bg-muted/30 transition-colors ${
+                    className={`ology-billing-row flex flex-col gap-2 p-4 rounded-lg hover:bg-muted/30 transition-colors ${
                      idx < data.items.length - 1 ? "border-b border-border/50" : ""
                    }`}
                  >
