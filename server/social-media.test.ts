@@ -14,11 +14,16 @@ const state = vi.hoisted(() => ({
   updateValues: [] as Array<Record<string, unknown>>,
   updateAffectedRows: [] as number[],
   insertId: 101,
+  djAvailable: vi.fn(),
 }));
 
 vi.mock("./_core/llm", () => ({ invokeLLM: state.invokeLLM }));
 vi.mock("./_core/env", () => ({ ENV: state.ENV }));
 vi.mock("./db/connection", () => ({ requireDb: state.requireDb }));
+vi.mock("./socialSpotlight", () => ({
+  DJ_SPOTLIGHT: { id: 20, name: "DJ & MUSIC SERVICES", slug: "dj-music-services" },
+  isDjSpotlightAvailable: state.djAvailable,
+}));
 
 function createDb() {
   const db = {
@@ -72,6 +77,7 @@ describe("Social Media Module", () => {
     state.updateValues = [];
     state.updateAffectedRows = [];
     state.insertId = 101;
+    state.djAvailable.mockResolvedValue(true);
     state.invokeLLM.mockResolvedValue({
       choices: [{ message: { content: "Find a service professional for your next project. #services #booking" } }],
     });
@@ -115,6 +121,37 @@ describe("Social Media Module", () => {
     await expect(previewSocialPost()).rejects.toThrow("Social post generation returned empty content");
     expect(state.insertedValues).toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("generates a DJ category card only if verified live supply still exists", async () => {
+    vi.setSystemTime(new Date("1970-01-19T00:00:00.000Z"));
+    const { generateSocialPost } = await import("./socialMedia");
+    const generated = await generateSocialPost();
+    expect(generated).toMatchObject({
+      postType: "category_spotlight", categoryId: 20, categoryName: "DJ & MUSIC SERVICES",
+      targetUrl: "/category/dj-music-services",
+      mediaUrl: "/manus-storage/ologycrew-dj-music-distinct_a53ec1e5.jpg",
+    });
+    expect(generated.content).toContain("https://ologycrew.com/category/dj-music-services");
+    expect(state.djAvailable).toHaveBeenCalledOnce();
+
+    state.djAvailable.mockResolvedValue(false);
+    const safeFallback = await generateSocialPost();
+    expect(safeFallback.postType).toBe("customer_attraction");
+    expect(safeFallback.targetUrl).toBe("/browse");
+  });
+
+  it("refuses to publish a saved DJ spotlight if eligible supply disappeared after drafting", async () => {
+    state.selectedRows = [{
+      id: 49, content: "DJ category copy", postType: "category_spotlight", categoryId: 20,
+      platforms: ["facebook", "linkedin"], status: "draft", targetUrl: "/category/dj-music-services",
+      mediaUrl: "/manus-storage/ologycrew-dj-music-distinct_a53ec1e5.jpg",
+    }];
+    state.djAvailable.mockResolvedValue(false);
+    const { publishSocialPost } = await import("./socialMedia");
+    await expect(publishSocialPost(49)).rejects.toThrow("not currently eligible");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(state.updateValues).toEqual([]);
   });
 
   it("publishes a saved image preview exactly as stored through Facebook photos and LinkedIn Images/Posts", async () => {

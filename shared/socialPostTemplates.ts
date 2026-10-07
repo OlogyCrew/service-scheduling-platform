@@ -12,10 +12,10 @@ export const SOCIAL_POST_TEMPLATES = {
     destination: "/for-providers",
   },
   spotlight: {
-    label: "Category spotlight",
-    imagePath: "/manus-storage/ologycrew-people-first-social-1200x630_05d25d5b.jpg",
-    alt: "Illustrative OlogyCrew card: Good work starts with people; a professional works with a customer.",
-    destination: "/browse",
+    label: "DJ & Music Services spotlight",
+    imagePath: "/manus-storage/ologycrew-dj-music-distinct_a53ec1e5.jpg",
+    alt: "Illustrative OlogyCrew DJ & Music Services card: Set the scene with music; a DJ and customer discuss an event beside a mixing deck.",
+    destination: "/category/dj-music-services",
   },
 } as const;
 export type SocialPostTemplate = keyof typeof SOCIAL_POST_TEMPLATES;

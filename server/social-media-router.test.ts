@@ -1,8 +1,12 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ requireDb: vi.fn(), preview: vi.fn(), publish: vi.fn(), createJob: vi.fn(), deleteJob: vi.fn() }));
+const mocks = vi.hoisted(() => ({ requireDb: vi.fn(), preview: vi.fn(), publish: vi.fn(), createJob: vi.fn(), deleteJob: vi.fn(), djAvailable: vi.fn() }));
 vi.mock("./db/connection", () => ({ requireDb: mocks.requireDb }));
 vi.mock("./socialMedia", () => ({ previewSocialPost: mocks.preview, publishSocialPost: mocks.publish }));
+vi.mock("./socialSpotlight", () => ({
+  DJ_SPOTLIGHT: { id: 20, name: "DJ & MUSIC SERVICES", slug: "dj-music-services" },
+  isDjSpotlightAvailable: mocks.djAvailable,
+}));
 vi.mock("./_core/heartbeat", () => ({ createHeartbeatJob: mocks.createJob, deleteHeartbeatJob: mocks.deleteJob }));
 import { socialMediaRouter } from "./routers/socialMediaRouter";
 
@@ -30,6 +34,7 @@ beforeEach(() => {
   mocks.publish.mockResolvedValue({ success: true, results: [] });
   mocks.createJob.mockResolvedValue({ taskUid: "cron-uid" });
   mocks.deleteJob.mockResolvedValue(undefined);
+  mocks.djAvailable.mockResolvedValue(true);
 });
 afterEach(() => vi.unstubAllEnvs());
 
@@ -50,6 +55,23 @@ describe("Admin social image-post router", () => {
       targetUrl: "/for-providers",
     });
     expect(mocks.createJob).not.toHaveBeenCalled();
+  });
+  it("exposes DJ eligibility and persists its category only while verified supply exists", async () => {
+    mocks.djAvailable.mockResolvedValueOnce(false);
+    expect(await admin().spotlightAvailable()).toBe(false);
+    await expect(admin().createPost({ content: "Explore DJs", platforms: ["facebook"], template: "spotlight" }))
+      .resolves.toMatchObject({ id: 200 });
+    expect(inserted).toMatchObject({
+      postType: "category_spotlight", categoryId: 20, categoryName: "DJ & MUSIC SERVICES",
+      targetUrl: "/category/dj-music-services",
+      mediaUrl: "/manus-storage/ologycrew-dj-music-distinct_a53ec1e5.jpg",
+      content: "Explore DJs\n\nhttps://ologycrew.com/category/dj-music-services",
+    });
+    inserted = undefined;
+    mocks.djAvailable.mockResolvedValue(false);
+    await expect(admin().createPost({ content: "Explore DJs", platforms: ["facebook"], template: "spotlight" }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(inserted).toBeUndefined();
   });
   it("publishes precisely the saved preview ID, never a newly generated post", async () => {
     savedPost = { id: 100, status: "draft", scheduleCronTaskUid: null };

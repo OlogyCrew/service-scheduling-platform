@@ -15,7 +15,7 @@ import {
   isAdminSocialPlatform,
   type AdminSocialPlatform,
 } from "../../../shared/adminSocialPlatforms";
-import { SOCIAL_POST_TEMPLATES } from "../../../shared/socialPostTemplates";
+import { SOCIAL_POST_TEMPLATES, type SocialPostTemplate } from "../../../shared/socialPostTemplates";
 
 export default function AdminSocialMedia() {
   const [previewContent, setPreviewContent] = useState<{
@@ -26,11 +26,12 @@ export default function AdminSocialMedia() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newContent, setNewContent] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<AdminSocialPlatform[]>([...ADMIN_SOCIAL_PLATFORMS]);
-  const [newTemplate, setNewTemplate] = useState<"customer" | "provider">("customer");
+  const [newTemplate, setNewTemplate] = useState<SocialPostTemplate>("customer");
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
 
   const { data: posts, refetch, isLoading } = trpc.socialMedia.listPosts.useQuery();
+  const { data: spotlightAvailable } = trpc.socialMedia.spotlightAvailable.useQuery();
   const previewMutation = trpc.socialMedia.previewPost.useMutation({
     onSuccess: (data) => {
       setPreviewContent(data);
@@ -189,10 +190,10 @@ export default function AdminSocialMedia() {
                 <select
                   id="post-template"
                   value={newTemplate}
-                  onChange={(event) => setNewTemplate(event.target.value as "customer" | "provider")}
+                  onChange={(event) => setNewTemplate(event.target.value as SocialPostTemplate)}
                   className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a43d29]"
                 >
-                  {(["customer", "provider"] as const).map((key) => (
+                  {(["customer", "provider", ...(spotlightAvailable ? ["spotlight" as const] : [])] as SocialPostTemplate[]).map((key) => (
                     <option key={key} value={key}>{SOCIAL_POST_TEMPLATES[key].label}</option>
                   ))}
                 </select>
@@ -201,7 +202,7 @@ export default function AdminSocialMedia() {
                   alt={SOCIAL_POST_TEMPLATES[newTemplate].alt}
                   className="w-full max-h-56 object-contain rounded-lg border bg-[#f5f2e9]"
                 />
-                <p className="text-xs text-muted-foreground">Illustrative artwork, not a photo of a listed provider. Your destination will be {SOCIAL_POST_TEMPLATES[newTemplate].destination}.</p>
+                <p className="text-xs text-muted-foreground">Illustrative artwork, not a photo of a listed provider. Your destination will be {SOCIAL_POST_TEMPLATES[newTemplate].destination}. DJ spotlight is available only while a verified real provider has an active service.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="post-content">Post Content</Label>

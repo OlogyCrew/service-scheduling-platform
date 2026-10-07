@@ -4,6 +4,7 @@ import { requireDb } from "./db/connection";
 import { socialPosts } from "../drizzle/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { OLOGYCREW_ORIGIN, SOCIAL_POST_TEMPLATES } from "../shared/socialPostTemplates";
+import { DJ_SPOTLIGHT, isDjSpotlightAvailable } from "./socialSpotlight";
 import {
   ADMIN_SOCIAL_PLATFORMS,
   normalizeAdminSocialPlatforms,
@@ -16,7 +17,7 @@ const APPROVED_MEDIA_PATHS: Set<string> = new Set(
   Object.values(SOCIAL_POST_TEMPLATES).map((template) => template.imagePath),
 );
 
-type SocialPostType = "provider_recruitment" | "customer_attraction";
+type SocialPostType = "provider_recruitment" | "customer_attraction" | "category_spotlight";
 
 type SocialMedia = {
   mediaUrl: string;
@@ -73,7 +74,9 @@ function publicOlogyCrewUrl(path: string): string {
 function socialMediaFor(postType: SocialPostType): SocialMedia {
   const template = postType === "provider_recruitment"
     ? SOCIAL_POST_TEMPLATES.provider
-    : SOCIAL_POST_TEMPLATES.customer;
+    : postType === "category_spotlight"
+      ? SOCIAL_POST_TEMPLATES.spotlight
+      : SOCIAL_POST_TEMPLATES.customer;
   return {
     // Keep approved storage URLs relative in drafts/previews. They are promoted
     // to absolute URLs only at the Facebook/LinkedIn HTTP boundary.
@@ -83,25 +86,15 @@ function socialMediaFor(postType: SocialPostType): SocialMedia {
   };
 }
 
-function fallbackSocialMedia(): SocialMedia {
-  return {
-    mediaUrl: SOCIAL_POST_TEMPLATES.spotlight.imagePath,
-    mediaAlt: SOCIAL_POST_TEMPLATES.spotlight.alt,
-    targetUrl: SOCIAL_POST_TEMPLATES.spotlight.destination,
-  };
-}
-
 /**
- * Alternate customer and provider creative by UTC week. Category spotlights are
- * deliberately not generated: a category URL must only be promoted after a
- * provider/service availability check, which this small publisher does not make.
+ * Rotate customer/provider/spotlight creative by UTC week. The third option is
+ * used only if the category availability check confirms verified live supply.
  */
 function weeklyPostType(now = Date.now()): SocialPostType {
   const day = new Date(now);
   const monday = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
-  return Math.floor((monday - Date.UTC(1970, 0, 5)) / (7 * 24 * 60 * 60 * 1000)) % 2 === 0
-    ? "customer_attraction"
-    : "provider_recruitment";
+  const week = Math.floor((monday - Date.UTC(1970, 0, 5)) / (7 * 24 * 60 * 60 * 1000));
+  return (["customer_attraction", "provider_recruitment", "category_spotlight"] as const)[((week % 3) + 3) % 3];
 }
 
 function includeTargetUrl(content: string, targetUrl: string): string {
@@ -111,11 +104,18 @@ function includeTargetUrl(content: string, targetUrl: string): string {
 
 /** Generate a factual, image-backed post plan. This function never publishes. */
 export async function generateSocialPost(): Promise<GeneratedSocialPost> {
-  const postType = weeklyPostType();
+  const selectedType = weeklyPostType();
+  // A pending-review, demo, removed or otherwise unavailable provider cannot
+  // accidentally cause an empty public category to be promoted.
+  const postType = selectedType === "category_spotlight" && !await isDjSpotlightAvailable()
+    ? "customer_attraction"
+    : selectedType;
   const media = socialMediaFor(postType);
   const audiencePrompt = postType === "provider_recruitment"
     ? "Invite independent service providers to create a listing and manage bookings with OlogyCrew."
-    : "Invite customers to explore and book services through OlogyCrew.";
+    : postType === "category_spotlight"
+      ? "Invite customers to explore OlogyCrew's DJ & Music Services category. It has at least one currently active non-demo verified provider with an active service; never state a provider count, name, rating or specific availability."
+      : "Invite customers to explore and book services through OlogyCrew.";
 
   const response = await invokeLLM({
     messages: [
@@ -138,6 +138,7 @@ export async function generateSocialPost(): Promise<GeneratedSocialPost> {
   return {
     content: includeTargetUrl(generatedContent, media.targetUrl),
     postType,
+    ...(postType === "category_spotlight" ? { categoryId: DJ_SPOTLIGHT.id, categoryName: DJ_SPOTLIGHT.name } : {}),
     ...media,
   };
 }
@@ -182,7 +183,7 @@ async function postToFacebook(content: string, media?: Pick<SocialMedia, "mediaU
     ? {
         url: externalMediaUrl(media!.mediaUrl),
         caption: content,
-        alt_text_custom: media!.mediaAlt || fallbackSocialMedia().mediaAlt,
+        alt_text_custom: media!.mediaAlt || "Illustrative OlogyCrew people-first artwork",
         access_token: ENV.facebookPageAccessToken,
       }
     : {
@@ -286,7 +287,7 @@ async function postToLinkedIn(content: string, media?: Pick<SocialMedia, "mediaU
         thirdPartyDistributionChannels: [],
       },
       ...(imageUrn
-        ? { content: { media: { id: imageUrn, altText: media?.mediaAlt || fallbackSocialMedia().mediaAlt } } }
+        ? { content: { media: { id: imageUrn, altText: media?.mediaAlt || "Illustrative OlogyCrew people-first artwork" } } }
         : {}),
       lifecycleState: "PUBLISHED",
       isReshareDisabledByAuthor: false,
@@ -372,6 +373,10 @@ export async function publishSocialPost(postId?: number): Promise<{
   if (!post.content.trim()) {
     throw new Error("Post content is empty");
   }
+  if ((post.categoryId === DJ_SPOTLIGHT.id || post.targetUrl === SOCIAL_POST_TEMPLATES.spotlight.destination)
+    && !await isDjSpotlightAvailable()) {
+    throw new Error("DJ spotlight is not currently eligible: an active verified non-demo provider and service are required");
+  }
 
   // This conditional state transition prevents concurrent cron/admin attempts
   // from dispatching the same saved draft twice.
@@ -379,7 +384,7 @@ export async function publishSocialPost(postId?: number): Promise<{
 
   const platforms = normalizeAdminSocialPlatforms(post.platforms);
   const media = post.mediaUrl
-    ? { mediaUrl: post.mediaUrl, mediaAlt: post.mediaAlt || fallbackSocialMedia().mediaAlt }
+    ? { mediaUrl: post.mediaUrl, mediaAlt: post.mediaAlt || "Illustrative OlogyCrew people-first artwork" }
     : undefined;
   const publishers: Record<AdminSocialPlatform, (content: string, selectedMedia?: Pick<SocialMedia, "mediaUrl" | "mediaAlt">) => Promise<PublishResult>> = {
     facebook: postToFacebook,

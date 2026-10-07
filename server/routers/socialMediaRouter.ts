@@ -9,6 +9,7 @@ import { hasAdminClearance } from "../adminPolicy";
 import { ADMIN_SOCIAL_PLATFORMS } from "../../shared/adminSocialPlatforms";
 import { OLOGYCREW_ORIGIN, SOCIAL_POST_TEMPLATES } from "../../shared/socialPostTemplates";
 import { createHeartbeatJob, deleteHeartbeatJob } from "../_core/heartbeat";
+import { DJ_SPOTLIGHT, isDjSpotlightAvailable } from "../socialSpotlight";
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (!hasAdminClearance(ctx.user)) throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
@@ -37,6 +38,8 @@ export const socialMediaRouter = router({
       return db.select().from(socialPosts).orderBy(desc(socialPosts.createdAt)).limit(limit).offset((page - 1) * limit);
     }),
 
+  spotlightAvailable: adminProcedure.query(() => isDjSpotlightAvailable()),
+
   previewPost: adminProcedure.mutation(() => previewSocialPost()),
 
   publishPost: adminProcedure
@@ -50,7 +53,7 @@ export const socialMediaRouter = router({
     .input(z.object({
       content: z.string().trim().min(1).max(2000),
       platforms: z.array(z.enum(ADMIN_SOCIAL_PLATFORMS)).min(1),
-      template: z.enum(["customer", "provider"]).default("customer"),
+      template: z.enum(["customer", "provider", "spotlight"]).default("customer"),
       scheduledAt: z.number().int().optional(),
     }))
     .mutation(async ({ input }) => {
@@ -58,6 +61,9 @@ export const socialMediaRouter = router({
       const template = SOCIAL_POST_TEMPLATES[input.template];
       const destinationUrl = new URL(template.destination, OLOGYCREW_ORIGIN).toString();
       const caption = input.content.includes(destinationUrl) ? input.content : `${input.content}\n\n${destinationUrl}`;
+      if (input.template === "spotlight" && !await isDjSpotlightAvailable()) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "DJ spotlight requires an active verified non-demo provider and service." });
+      }
       if (input.scheduledAt) {
         if (process.env.NODE_ENV !== "production") {
           throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Schedule posts after publishing this checkpoint; preview can save drafts safely." });
@@ -68,7 +74,10 @@ export const socialMediaRouter = router({
         }
       }
       const [inserted] = await db.insert(socialPosts).values({
-        content: caption, postType: "manual", platforms: input.platforms,
+        content: caption, postType: input.template === "spotlight" ? "category_spotlight" : "manual",
+        categoryId: input.template === "spotlight" ? DJ_SPOTLIGHT.id : null,
+        categoryName: input.template === "spotlight" ? DJ_SPOTLIGHT.name : null,
+        platforms: input.platforms,
         mediaUrl: template.imagePath, mediaAlt: template.alt, targetUrl: template.destination,
         status: "draft", createdAt: Date.now(),
       }).$returningId();
