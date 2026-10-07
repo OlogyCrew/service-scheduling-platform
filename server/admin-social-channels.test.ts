@@ -38,7 +38,8 @@ describe("Admin social posting channels", () => {
     expect(routerSource).toContain("hasAdminClearance(ctx.user)");
     expect(routerSource).not.toMatch(/instagram/i);
 
-    expect(publisherSource).toContain("platforms.map((platform)");
+    expect(publisherSource).toContain("remaining.map(async (platform)");
+    expect(publisherSource).toContain("normalizeAdminSocialPlatforms(post.platforms)");
     expect(publisherSource).toContain("facebook: postToFacebook");
     expect(publisherSource).toContain("linkedin: postToLinkedIn");
     expect(publisherSource).not.toMatch(/postToInstagram|instagramBusinessAccountId|Instagram credentials/i);

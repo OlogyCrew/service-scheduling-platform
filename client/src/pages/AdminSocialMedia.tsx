@@ -15,13 +15,18 @@ import {
   isAdminSocialPlatform,
   type AdminSocialPlatform,
 } from "../../../shared/adminSocialPlatforms";
+import { SOCIAL_POST_TEMPLATES } from "../../../shared/socialPostTemplates";
 
 export default function AdminSocialMedia() {
-  const [previewContent, setPreviewContent] = useState<{ content: string; postType: string; categoryName?: string } | null>(null);
+  const [previewContent, setPreviewContent] = useState<{
+    content: string; postType: string; categoryName?: string;
+    postId: number; mediaUrl?: string | null; mediaAlt?: string | null; targetUrl?: string | null;
+  } | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newContent, setNewContent] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<AdminSocialPlatform[]>([...ADMIN_SOCIAL_PLATFORMS]);
+  const [newTemplate, setNewTemplate] = useState<"customer" | "provider">("customer");
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
 
@@ -42,7 +47,7 @@ export default function AdminSocialMedia() {
         toast.error("Some platforms failed. Check post history for details.");
       }
       refetch();
-      setPreviewContent(null);
+      if (data.success) setPreviewContent(null);
     },
     onError: (err) => {
       setIsPublishing(false);
@@ -50,11 +55,12 @@ export default function AdminSocialMedia() {
     },
   });
   const createMutation = trpc.socialMedia.createPost.useMutation({
-    onSuccess: () => {
-      toast.success("Post created successfully!");
+    onSuccess: (result) => {
+      toast.success(result.scheduled ? "Post scheduled" : "Draft saved");
       setCreateOpen(false);
       setNewContent("");
       setSelectedPlatforms([...ADMIN_SOCIAL_PLATFORMS]);
+      setNewTemplate("customer");
       setScheduleDate("");
       setScheduleTime("");
       refetch();
@@ -80,9 +86,9 @@ export default function AdminSocialMedia() {
     onError: (err) => toast.error(err.message),
   });
 
-  const handlePublish = () => {
+  const handlePublish = (postId?: number) => {
     setIsPublishing(true);
-    publishMutation.mutate({});
+    publishMutation.mutate(postId ? { postId } : {});
   };
 
   const handleCreatePost = () => {
@@ -94,10 +100,14 @@ export default function AdminSocialMedia() {
       toast.error("Select at least one platform");
       return;
     }
+    if (Boolean(scheduleDate) !== Boolean(scheduleTime)) {
+      toast.error("Choose both a date and a time to schedule this post");
+      return;
+    }
     let scheduledAt: number | undefined;
     if (scheduleDate && scheduleTime) {
       scheduledAt = new Date(`${scheduleDate}T${scheduleTime}`).getTime();
-      if (scheduledAt <= Date.now()) {
+      if (!Number.isFinite(scheduledAt) || scheduledAt <= Date.now()) {
         toast.error("Scheduled time must be in the future");
         return;
       }
@@ -105,6 +115,7 @@ export default function AdminSocialMedia() {
     createMutation.mutate({
       content: newContent.trim(),
       platforms: selectedPlatforms,
+      template: newTemplate,
       scheduledAt,
     });
   };
@@ -149,7 +160,7 @@ export default function AdminSocialMedia() {
             <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
             <div className="text-sm text-blue-800">
               <p className="font-medium mb-1">Social Media Auto-Posting</p>
-              <p>Posts are automatically generated and published every Monday at 10am UTC to Facebook and LinkedIn. You can also create custom posts manually using the "Create Post" button.</p>
+              <p>People-first image posts are prepared for Facebook and LinkedIn every Monday at 10am UTC. You can preview the exact post or save a custom draft below.</p>
               <p className="mt-1 text-blue-600">API credentials must be configured in Settings → Secrets for live posting.</p>
             </div>
           </div>
@@ -165,14 +176,33 @@ export default function AdminSocialMedia() {
               Create Post
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Create Social Media Post</DialogTitle>
               <DialogDescription>
-                Write your post content and choose which platforms to publish to.
+                Choose a people-first image, write your caption, and select the channels.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="post-template">Post image</Label>
+                <select
+                  id="post-template"
+                  value={newTemplate}
+                  onChange={(event) => setNewTemplate(event.target.value as "customer" | "provider")}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a43d29]"
+                >
+                  {(["customer", "provider"] as const).map((key) => (
+                    <option key={key} value={key}>{SOCIAL_POST_TEMPLATES[key].label}</option>
+                  ))}
+                </select>
+                <img
+                  src={SOCIAL_POST_TEMPLATES[newTemplate].imagePath}
+                  alt={SOCIAL_POST_TEMPLATES[newTemplate].alt}
+                  className="w-full max-h-56 object-contain rounded-lg border bg-[#f5f2e9]"
+                />
+                <p className="text-xs text-muted-foreground">Illustrative artwork, not a photo of a listed provider. Your destination will be {SOCIAL_POST_TEMPLATES[newTemplate].destination}.</p>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="post-content">Post Content</Label>
                 <Textarea
@@ -207,18 +237,19 @@ export default function AdminSocialMedia() {
               <div className="space-y-2">
                 <Label>Schedule (optional)</Label>
                 <p className="text-xs text-muted-foreground">Leave blank to save as draft. Set a date/time to schedule for later.</p>
-                <div className="flex gap-2">
+                {import.meta.env.DEV && <p className="text-xs text-amber-800">Scheduling activates after this checkpoint is published; use drafts in preview.</p>}
+                <div className="flex flex-wrap gap-2">
                   <input
                     type="date"
                     value={scheduleDate}
                     onChange={(e) => setScheduleDate(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="flex h-9 min-w-[145px] flex-1 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   />
                   <input
                     type="time"
                     value={scheduleTime}
                     onChange={(e) => setScheduleTime(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="flex h-9 min-w-[110px] flex-1 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   />
                 </div>
               </div>
@@ -241,12 +272,12 @@ export default function AdminSocialMedia() {
           {previewMutation.isPending ? "Generating..." : "AI Preview"}
         </Button>
         <Button
-          onClick={handlePublish}
+          onClick={() => handlePublish()}
           disabled={isPublishing}
           variant="outline"
         >
           <Send className="h-4 w-4 mr-2" />
-          {isPublishing ? "Publishing..." : "AI Publish Now"}
+          {isPublishing ? "Publishing..." : "Generate & publish new"}
         </Button>
         <Button variant="ghost" onClick={() => refetch()}>
           <RefreshCw className="h-4 w-4 mr-2" />
@@ -268,9 +299,14 @@ export default function AdminSocialMedia() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {previewContent.mediaUrl && (
+              <img src={previewContent.mediaUrl} alt={previewContent.mediaAlt || "OlogyCrew social post artwork"}
+                className="w-full max-h-80 object-contain rounded-xl border mb-3 bg-[#f5f2e9]" />
+            )}
             <p className="text-sm whitespace-pre-wrap mb-3">{previewContent.content}</p>
+            {previewContent.targetUrl && <p className="text-xs text-muted-foreground mb-3">Destination: {previewContent.targetUrl}</p>}
             <div className="flex gap-2">
-              <Button size="sm" onClick={handlePublish} disabled={isPublishing}>
+              <Button size="sm" onClick={() => handlePublish(previewContent.postId)} disabled={isPublishing}>
                 <Send className="h-3 w-3 mr-1" />
                 Publish This
               </Button>
@@ -315,6 +351,10 @@ export default function AdminSocialMedia() {
                           {post.postedAt ? new Date(post.postedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) : post.createdAt ? new Date(post.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) : ""}
                         </span>
                       </div>
+                      {post.mediaUrl && (
+                        <img src={post.mediaUrl} alt={post.mediaAlt || "OlogyCrew social post artwork"}
+                          className="w-full max-w-64 aspect-square object-contain rounded-lg border bg-[#f5f2e9] mt-2" />
+                      )}
                       <p className="text-sm whitespace-pre-wrap mt-2">{post.content}</p>
                       {getPlatformResults(post.results as any)}
                       {/* Platform badges for draft/scheduled posts */}
@@ -327,7 +367,7 @@ export default function AdminSocialMedia() {
                       )}
                     </div>
                     <div className="flex flex-col gap-1 shrink-0">
-                      {(post.status === "draft" || post.status === "scheduled") && (
+                      {(post.status === "draft" || post.status === "scheduled" || post.status === "failed" || post.status === "partial") && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -335,7 +375,7 @@ export default function AdminSocialMedia() {
                           disabled={publishExistingMutation.isPending}
                         >
                           <Send className="h-3 w-3 mr-1" />
-                          Publish
+                          {post.status === "failed" || post.status === "partial" ? "Retry remaining" : "Publish"}
                         </Button>
                       )}
                       <Button

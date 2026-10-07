@@ -208,8 +208,9 @@ async function startServer() {
   app.post("/api/scheduled/referral-credit-expiry", handleScheduledReferralCreditExpiry);
 
   // Scheduled task: social media auto-post (Heartbeat cron)
-  const { handleScheduledSocialPost } = await import("../scheduledSocialPost");
+  const { handleScheduledSocialPost, handleScheduledSocialDraft } = await import("../scheduledSocialPost");
   app.post("/api/scheduled/social-post", handleScheduledSocialPost);
+  app.post("/api/scheduled/social-draft", handleScheduledSocialDraft);
 
   // Custom auth routes (email/password + Google OAuth)
   const customAuthRouter = (await import("../customAuthRouter")).default;

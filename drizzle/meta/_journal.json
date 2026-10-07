@@ -456,6 +456,13 @@
       "when": 1790982034683,
       "tag": "0064_normal_bedlam",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "5",
+      "when": 1791391625578,
+      "tag": "0065_fuzzy_diamondback",
+      "breakpoints": true
     }
   ]
 }
