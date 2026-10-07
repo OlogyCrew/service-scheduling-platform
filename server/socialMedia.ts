@@ -50,6 +50,8 @@ type PublishResult = {
   success: boolean;
   postId?: string;
   error?: string;
+  destination?: "personal_profile";
+  format?: "image" | "text";
 };
 
 type PlatformPublishResult = PublishResult & { platform: AdminSocialPlatform };
@@ -216,12 +218,17 @@ function linkedinHeaders(includeJsonContentType = true): HeadersInit {
   };
 }
 
-async function linkedinAuthor(): Promise<string> {
-  const configuredOrganization = ENV.linkedinOrganizationId.trim();
-  if (!configuredOrganization) throw new Error("LinkedIn organization ID not configured");
-  return configuredOrganization.startsWith("urn:li:organization:")
-    ? configuredOrganization
-    : `urn:li:organization:${configuredOrganization}`;
+async function linkedinMemberAuthor(): Promise<string> {
+  const response = await fetch("https://api.linkedin.com/v2/userinfo", {
+    headers: { Authorization: `Bearer ${ENV.linkedinAccessToken}` },
+  });
+  if (!response.ok) throw new Error(`LinkedIn member identity unavailable (${response.status})`);
+  const data = await response.json().catch(() => ({})) as { sub?: unknown };
+  if (typeof data.sub !== "string" || !/^[A-Za-z0-9_-]+$/.test(data.sub)) {
+    throw new Error("LinkedIn member identity unavailable");
+  }
+  // The OAuth token selects the member; an organization ID cannot redirect a post.
+  return `urn:li:person:${data.sub}`;
 }
 
 function imageContentType(mediaUrl: string, sourceType: string | null): string {
@@ -267,16 +274,47 @@ async function uploadLinkedInImage(media: Pick<SocialMedia, "mediaUrl" | "mediaA
   return imageUrn;
 }
 
+async function postLinkedInMemberText(content: string, author: string): Promise<PublishResult> {
+  // Preserve the known-working member-social path if image upload is unavailable.
+  const response = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${ENV.linkedinAccessToken}`,
+      "Content-Type": "application/json",
+      "X-Restli-Protocol-Version": "2.0.0",
+    },
+    body: JSON.stringify({
+      author,
+      lifecycleState: "PUBLISHED",
+      specificContent: { "com.linkedin.ugc.ShareContent": {
+        shareCommentary: { text: content }, shareMediaCategory: "NONE",
+      } },
+      visibility: { "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC" },
+    }),
+  });
+  if (response.status === 201) {
+    return { success: true, postId: response.headers.get("x-restli-id") || "published", destination: "personal_profile", format: "text" };
+  }
+  return { success: false, error: `LinkedIn personal-profile text post failed (${response.status})` };
+}
+
 async function postToLinkedIn(content: string, media?: Pick<SocialMedia, "mediaUrl" | "mediaAlt">): Promise<PublishResult> {
   if (!ENV.linkedinAccessToken) {
     return { success: false, error: "LinkedIn credentials not configured" };
   }
 
   try {
-    // When an organization is configured, every API request uses that exact
-    // organization author. We intentionally never fall back to a member author.
-    const author = await linkedinAuthor();
-    const imageUrn = media?.mediaUrl ? await uploadLinkedInImage(media, author) : undefined;
+    const author = await linkedinMemberAuthor();
+    if (!media?.mediaUrl) return await postLinkedInMemberText(content, author);
+
+    // Uploading an image is not a public post. If it fails, the already-approved
+    // caption can still use the personal text route that worked before.
+    let imageUrn: string;
+    try {
+      imageUrn = await uploadLinkedInImage(media, author);
+    } catch {
+      return await postLinkedInMemberText(content, author);
+    }
     const payload = {
       author,
       commentary: content,
@@ -286,9 +324,7 @@ async function postToLinkedIn(content: string, media?: Pick<SocialMedia, "mediaU
         targetEntities: [],
         thirdPartyDistributionChannels: [],
       },
-      ...(imageUrn
-        ? { content: { media: { id: imageUrn, altText: media?.mediaAlt || "Illustrative OlogyCrew people-first artwork" } } }
-        : {}),
+      content: { media: { id: imageUrn, altText: media.mediaAlt || "Illustrative OlogyCrew people-first artwork" } },
       lifecycleState: "PUBLISHED",
       isReshareDisabledByAuthor: false,
     };
@@ -298,8 +334,11 @@ async function postToLinkedIn(content: string, media?: Pick<SocialMedia, "mediaU
       body: JSON.stringify(payload),
     });
     if (response.status === 201) {
-      return { success: true, postId: response.headers.get("x-restli-id") || "published" };
+      return { success: true, postId: response.headers.get("x-restli-id") || "published", destination: "personal_profile", format: "image" };
     }
+    // A rejected image post is known not to have published. For timeouts/5xx,
+    // do not retry as text: LinkedIn might have accepted the original request.
+    if ([400, 403, 422].includes(response.status)) return await postLinkedInMemberText(content, author);
     return { success: false, error: `LinkedIn API error (${response.status})` };
   } catch (error) {
     return { success: false, error: `LinkedIn request failed: ${safeErrorMessage(error, "unknown error")}` };

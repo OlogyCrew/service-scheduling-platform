@@ -145,7 +145,9 @@ export default function AdminSocialMedia() {
       <div className="flex flex-wrap gap-1 mt-1">
         {activeResults.map((r: any, i: number) => (
           <Badge key={i} variant={r.success ? "outline" : "destructive"} className="text-xs">
-            {r.platform}: {r.success ? "✓" : r.error?.substring(0, 30) || "failed"}
+            {r.platform}: {r.success
+              ? `${r.destination === "personal_profile" ? "personal profile · " : ""}${r.format === "text" ? "text · " : r.format === "image" ? "image · " : ""}✓`
+              : r.error?.substring(0, 60) || "failed"}
           </Badge>
         ))}
       </div>
@@ -162,6 +164,7 @@ export default function AdminSocialMedia() {
             <div className="text-sm text-blue-800">
               <p className="font-medium mb-1">Social Media Auto-Posting</p>
               <p>People-first image posts are prepared for Facebook and LinkedIn every Monday at 10am UTC. You can preview the exact post or save a custom draft below.</p>
+              <p className="mt-1">LinkedIn uses the connected personal profile for now. If its image upload is unavailable, the same caption posts there as text; you can share it to the OlogyCrew Page manually.</p>
               <p className="mt-1 text-blue-600">API credentials must be configured in Settings → Secrets for live posting.</p>
             </div>
           </div>

@@ -154,7 +154,7 @@ describe("Social Media Module", () => {
     expect(state.updateValues).toEqual([]);
   });
 
-  it("publishes a saved image preview exactly as stored through Facebook photos and LinkedIn Images/Posts", async () => {
+  it("publishes a saved image preview to Facebook Page and the token holder's LinkedIn profile", async () => {
     state.ENV.facebookPageAccessToken = "facebook-secret";
     state.ENV.facebookPageId = "page-42";
     state.ENV.linkedinAccessToken = "linkedin-secret";
@@ -171,6 +171,7 @@ describe("Social Media Module", () => {
     }];
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ id: "fb-photo-1" }, 200))
+      .mockResolvedValueOnce(jsonResponse({ sub: "member-123" }, 200))
       .mockResolvedValueOnce(jsonResponse({ value: { uploadUrl: "https://upload.linkedin.test/image", image: "urn:li:image:abc" } }, 200))
       .mockResolvedValueOnce(new Response("image-bytes", { status: 200, headers: { "Content-Type": "image/jpeg" } }))
       .mockResolvedValueOnce(new Response(null, { status: 201 }))
@@ -183,11 +184,11 @@ describe("Social Media Module", () => {
       success: true,
       results: [
         { platform: "facebook", success: true, postId: "fb-photo-1" },
-        { platform: "linkedin", success: true, postId: "urn:li:share:99" },
+        { platform: "linkedin", success: true, postId: "urn:li:share:99", destination: "personal_profile", format: "image" },
       ],
     });
     expect(state.invokeLLM).not.toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
 
     const [facebookUrl, facebookRequest] = fetchMock.mock.calls[0];
     expect(facebookUrl).toBe("https://graph.facebook.com/v26.0/page-42/photos");
@@ -198,7 +199,8 @@ describe("Social Media Module", () => {
       access_token: "facebook-secret",
     });
 
-    const [initializeUrl, initializeRequest] = fetchMock.mock.calls[1];
+    expect(fetchMock.mock.calls[1][0]).toBe("https://api.linkedin.com/v2/userinfo");
+    const [initializeUrl, initializeRequest] = fetchMock.mock.calls[2];
     expect(initializeUrl).toBe("https://api.linkedin.com/rest/images?action=initializeUpload");
     expect(initializeRequest.headers).toMatchObject({
       Authorization: "Bearer linkedin-secret",
@@ -206,17 +208,17 @@ describe("Social Media Module", () => {
       "X-Restli-Protocol-Version": "2.0.0",
     });
     expect(JSON.parse(initializeRequest.body)).toEqual({
-      initializeUploadRequest: { owner: "urn:li:organization:org-77" },
+      initializeUploadRequest: { owner: "urn:li:person:member-123" },
     });
 
-    expect(fetchMock.mock.calls[2][0]).toBe("https://ologycrew.com/manus-storage/ologycrew-find-services_87aa5845.jpg");
-    expect(fetchMock.mock.calls[3][0]).toBe("https://upload.linkedin.test/image");
-    expect(fetchMock.mock.calls[3][1]).toMatchObject({ method: "PUT", headers: { "Content-Type": "image/jpeg" } });
+    expect(fetchMock.mock.calls[3][0]).toBe("https://ologycrew.com/manus-storage/ologycrew-find-services_87aa5845.jpg");
+    expect(fetchMock.mock.calls[4][0]).toBe("https://upload.linkedin.test/image");
+    expect(fetchMock.mock.calls[4][1]).toMatchObject({ method: "PUT", headers: { "Content-Type": "image/jpeg" } });
 
-    const [postsUrl, postsRequest] = fetchMock.mock.calls[4];
+    const [postsUrl, postsRequest] = fetchMock.mock.calls[5];
     expect(postsUrl).toBe("https://api.linkedin.com/rest/posts");
     expect(JSON.parse(postsRequest.body)).toEqual({
-      author: "urn:li:organization:org-77",
+      author: "urn:li:person:member-123",
       commentary: state.selectedRows[0].content,
       visibility: "PUBLIC",
       distribution: {
@@ -234,7 +236,7 @@ describe("Social Media Module", () => {
     ]);
   });
 
-  it("uses the legacy text-only Facebook feed and LinkedIn Posts payload for a historical draft without media", async () => {
+  it("uses the legacy Facebook feed and LinkedIn personal-profile text payload for a historical draft without media", async () => {
     state.ENV.facebookPageAccessToken = "facebook-secret";
     state.ENV.facebookPageId = "page-42";
     state.ENV.linkedinAccessToken = "linkedin-secret";
@@ -251,23 +253,24 @@ describe("Social Media Module", () => {
     }];
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ id: "fb-feed-1" }, 200))
+      .mockResolvedValueOnce(jsonResponse({ sub: "member-123" }, 200))
       .mockResolvedValueOnce(jsonResponse({}, 201, { "x-restli-id": "urn:li:share:historic" }));
     const { publishSocialPost } = await import("./socialMedia");
 
     const result = await publishSocialPost(43);
 
     expect(result.success).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls[0][0]).toBe("https://graph.facebook.com/v26.0/page-42/feed");
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
       message: "A historical text-only post",
       access_token: "facebook-secret",
     });
-    expect(fetchMock.mock.calls[1][0]).toBe("https://api.linkedin.com/rest/posts");
-    const linkedInPayload = JSON.parse(fetchMock.mock.calls[1][1].body);
-    expect(linkedInPayload.author).toBe("urn:li:organization:org-77");
-    expect(linkedInPayload.commentary).toBe("A historical text-only post");
-    expect(linkedInPayload.content).toBeUndefined();
+    expect(fetchMock.mock.calls[1][0]).toBe("https://api.linkedin.com/v2/userinfo");
+    expect(fetchMock.mock.calls[2][0]).toBe("https://api.linkedin.com/v2/ugcPosts");
+    const linkedInPayload = JSON.parse(fetchMock.mock.calls[2][1].body);
+    expect(linkedInPayload.author).toBe("urn:li:person:member-123");
+    expect(linkedInPayload.specificContent["com.linkedin.ugc.ShareContent"].shareCommentary.text).toBe("A historical text-only post");
   });
 
   it("refuses non-publishable saved rows before making external calls", async () => {
@@ -334,25 +337,84 @@ describe("Social Media Module", () => {
     }];
     state.ENV.linkedinAccessToken = "linkedin-secret";
     state.ENV.linkedinOrganizationId = "org-77";
-    fetchMock.mockResolvedValueOnce(jsonResponse({}, 201, { "x-restli-id": "urn:li:share:recovered" }));
+    fetchMock.mockResolvedValueOnce(jsonResponse({ sub: "member-123" }, 200))
+      .mockResolvedValueOnce(jsonResponse({}, 201, { "x-restli-id": "urn:li:share:recovered" }));
     const { publishSocialPost } = await import("./socialMedia");
     const result = await publishSocialPost(47);
     expect(result).toEqual({ success: true, results: [
       { platform: "facebook", success: true, postId: "fb-already-posted" },
-      { platform: "linkedin", success: true, postId: "urn:li:share:recovered" },
+      { platform: "linkedin", success: true, postId: "urn:li:share:recovered", destination: "personal_profile", format: "text" },
     ] });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe("https://api.linkedin.com/rest/posts");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][0]).toBe("https://api.linkedin.com/v2/userinfo");
+    expect(fetchMock.mock.calls[1][0]).toBe("https://api.linkedin.com/v2/ugcPosts");
     expect(state.updateValues[1]).toMatchObject({ status: "posted" });
   });
 
-  it("fails closed instead of posting as a member when the organization ID is absent", async () => {
-    state.selectedRows = [{ id: 48, content: "Company post", postType: "manual", platforms: ["linkedin"], status: "draft" }];
+  it("posts to the token holder's profile even if the organization ID is absent", async () => {
+    state.selectedRows = [{ id: 48, content: "Personal profile post", postType: "manual", platforms: ["linkedin"], status: "draft" }];
     state.ENV.linkedinAccessToken = "linkedin-secret";
+    fetchMock.mockResolvedValueOnce(jsonResponse({ sub: "member-123" }, 200))
+      .mockResolvedValueOnce(jsonResponse({}, 201, { "x-restli-id": "urn:li:share:personal" }));
     const { publishSocialPost } = await import("./socialMedia");
     const result = await publishSocialPost(48);
+    expect(result).toMatchObject({ success: true, results: [{ platform: "linkedin", destination: "personal_profile", format: "text" }] });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).author).toBe("urn:li:person:member-123");
+  });
+
+  it("falls back to the same personal-profile caption when LinkedIn member image upload is unavailable, never reposting Facebook", async () => {
+    state.ENV.linkedinAccessToken = "linkedin-secret";
+    state.ENV.linkedinOrganizationId = "unusable-org";
+    state.selectedRows = [{
+      id: 49, content: "Approved social caption\n\nhttps://ologycrew.com/browse", postType: "customer_attraction",
+      platforms: ["facebook", "linkedin"], status: "partial",
+      mediaUrl: "/manus-storage/ologycrew-find-services_87aa5845.jpg", mediaAlt: "Illustrative customer card",
+      results: [{ platform: "facebook", success: true, postId: "fb-already-posted" },
+        { platform: "linkedin", success: false, error: "Previous organization image upload 400" }],
+    }];
+    fetchMock.mockResolvedValueOnce(jsonResponse({ sub: "member-123" }, 200))
+      .mockResolvedValueOnce(jsonResponse({ message: "image upload unavailable" }, 400))
+      .mockResolvedValueOnce(jsonResponse({}, 201, { "x-restli-id": "urn:li:share:personal-text" }));
+    const { publishSocialPost } = await import("./socialMedia");
+    const result = await publishSocialPost(49);
+    expect(result).toEqual({ success: true, results: [
+      { platform: "facebook", success: true, postId: "fb-already-posted" },
+      { platform: "linkedin", success: true, postId: "urn:li:share:personal-text", destination: "personal_profile", format: "text" },
+    ] });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[0][0]).toBe("https://api.linkedin.com/v2/userinfo");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).initializeUploadRequest.owner).toBe("urn:li:person:member-123");
+    expect(fetchMock.mock.calls[2][0]).toBe("https://api.linkedin.com/v2/ugcPosts");
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body).specificContent["com.linkedin.ugc.ShareContent"].shareCommentary.text).toBe(state.selectedRows[0].content);
+  });
+
+  it("does not duplicate an image post with a text fallback after LinkedIn returns an ambiguous 5xx", async () => {
+    state.ENV.linkedinAccessToken = "linkedin-secret";
+    state.selectedRows = [{
+      id: 51, content: "Copy and target URL", postType: "manual", platforms: ["linkedin"], status: "draft",
+      mediaUrl: "/manus-storage/ologycrew-find-services_87aa5845.jpg", mediaAlt: "Illustrative card",
+    }];
+    fetchMock.mockResolvedValueOnce(jsonResponse({ sub: "member-123" }, 200))
+      .mockResolvedValueOnce(jsonResponse({ value: { uploadUrl: "https://upload.linkedin.test/image", image: "urn:li:image:abc" } }, 200))
+      .mockResolvedValueOnce(new Response("image-bytes", { status: 200, headers: { "Content-Type": "image/jpeg" } }))
+      .mockResolvedValueOnce(new Response(null, { status: 201 }))
+      .mockResolvedValueOnce(jsonResponse({ message: "Server error" }, 500));
+    const { publishSocialPost } = await import("./socialMedia");
+    const result = await publishSocialPost(51);
     expect(result.success).toBe(false);
-    expect(result.results[0].error).toContain("organization ID not configured");
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.results[0].error).toContain("500");
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock.mock.calls.some(([url]) => url === "https://api.linkedin.com/v2/ugcPosts")).toBe(false);
+  });
+
+  it("does not send a profile post when LinkedIn userinfo cannot resolve an authorized member", async () => {
+    state.ENV.linkedinAccessToken = "linkedin-secret";
+    state.selectedRows = [{ id: 50, content: "Copy", postType: "manual", platforms: ["linkedin"], status: "draft" }];
+    fetchMock.mockResolvedValueOnce(jsonResponse({}, 401));
+    const { publishSocialPost } = await import("./socialMedia");
+    const result = await publishSocialPost(50);
+    expect(result.success).toBe(false);
+    expect(result.results[0].error).toContain("identity unavailable");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
