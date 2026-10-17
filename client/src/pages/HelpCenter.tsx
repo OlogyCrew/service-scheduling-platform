@@ -91,6 +91,13 @@ const guideSections: GuideSection[] = [
         linkText: "Explore Services",
       },
       {
+        title: "Booking from an AI Assistant's Review Link",
+        content:
+          "Some AI assistants can search OlogyCrew's public services and prepare a review link for you. Not every assistant supports this. Opening a review link does not create a booking, send a quote request, reserve a time slot, or charge you. You remain in control of the final submission on OlogyCrew.\n\nOpen the link on ologycrew.com and check the provider, service, current price or quote requirement, date, time and location. A suggested time must still be available and explicitly confirmed. For a quote-only service, review the scope and location before sending your request; a request is not a confirmed booking or payment. Sign in if needed, then review again before submitting.\n\nReview links expire after 30 minutes. If a link expires or is invalid, ask for a fresh link or find the service manually in Explore. Availability can change before submission; the link does not hold a time slot.\n\nDemo services are samples, not real providers to hire. Agent service searches exclude official demos by default; an assistant can explicitly include samples for testing. Check that you are choosing a real provider before proceeding.\n\nDo not post your review link publicly: it can carry project and location notes. Do not include passwords, payment-card details or sensitive documents in an assistant request. Contact Support if a link opens the wrong service or your intended details are missing.",
+        link: "/browse",
+        linkText: "Find a Service Manually",
+      },
+      {
         title: "Sharing OlogyCrew",
         content:
           "At the bottom of the site, use Share OlogyCrew to open a Facebook or LinkedIn sharing window, or select Copy link to copy the public homepage address. These controls share only https://ologycrew.com/ — never your account or private workspace. To recommend a particular professional instead, use Share on that provider's public profile.",
@@ -313,6 +320,13 @@ const guideSections: GuideSection[] = [
         title: "Your Public Profile",
         content:
           "Every provider gets a public profile page that customers can view. It shows your services, reviews, portfolio, availability, and business information. Pro and Business subscribers can customize their profile URL slug for a more professional look (e.g., /your-business-name). When you share your profile link on social media (Facebook, Twitter/X, LinkedIn, etc.), a rich preview card is automatically generated with your business name, description, and photo — making your profile look professional and clickable.",
+      },
+      {
+        title: "How AI Assistants Find Your Services",
+        content:
+          "Compatible AI assistants can read OlogyCrew's public service and provider information, check current availability, and prepare a customer-reviewed booking or quote link. Discovery does not guarantee recommendations or new bookings, and not every assistant uses OlogyCrew's public API.\n\nKeep service names, descriptions, prices, duration, location and availability accurate. Clearly distinguish directly bookable work from services requiring a custom quote. Active, eligible public listings can appear in discovery; official demos are excluded from normal agent service searches.\n\nThe customer must review and submit on OlogyCrew. A prepared link does not reserve your calendar, create a booking or quote request, or collect payment. Continue managing confirmed bookings and submitted quote requests through your existing provider workspace.\n\nPrivate customer details, provider notes and booking history are not part of public discovery. Your public standing or reviewed evidence is not a guarantee of service quality. Contact Support if the public listing shows inaccurate information after you update your services.",
+        link: "/provider/services",
+        linkText: "Review Your Services",
       },
       {
         title: "Provider & Customer View Switcher",
