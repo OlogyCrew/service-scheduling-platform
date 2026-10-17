@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { OLOGYCREW_PUBLIC_API_BASE, OLOGYCREW_PUBLIC_ORIGIN, ologyCrewPublicUrl } from "../shared/publicUrls";
 import { OLOGYCREW_BOOKING_TIME_ZONE } from "../shared/bookingPolicy";
 
-export const AGENT_DISCOVERY_VERSION = "1.1.0";
+export const AGENT_DISCOVERY_VERSION = "1.1.1";
 
 export function buildAgentManifest() {
   return {
@@ -19,9 +19,9 @@ export function buildAgentManifest() {
     },
     capabilities: {
       search_services: {
-        description: "Search active services by keyword, category, provider location, or public price.",
+        description: "Search active non-demo services by keyword, category, provider location, or public price. Set includeDemo=true to include official demos, labeled isDemo=true after real providers.",
         endpoint: "GET /api/public/services",
-        parameters: ["q", "category", "city", "state", "minPrice", "maxPrice", "limit", "offset"],
+        parameters: ["q", "category", "city", "state", "minPrice", "maxPrice", "includeDemo", "limit", "offset"],
       },
       get_provider: {
         description: "Read an active provider's public profile, trust context, categories, and services.",
@@ -70,8 +70,8 @@ export function buildLlmsTxt() {
 
 ## Supported agent capabilities
 
-- Search active public services by keyword, category, provider city/state, and public price.
-- Read active provider profiles, public trust context, categories, services, pricing models, and review URLs.
+- Search active public services by keyword, category, provider city/state, and public price. Official demos are excluded by default; send includeDemo=true to include them. Demo results and providers are explicitly labeled isDemo=true, and real providers sort before demos when included.
+- Read active provider profiles, public trust context, categories, services, pricing models, demo status, and review URLs.
 - Check service-duration-specific available starts for a date without seeing customer or booking details.
 - Prepare a short-lived encrypted handoff URL that opens OlogyCrew's existing adaptive booking-or-quote flow for customer review.
 
@@ -121,6 +121,7 @@ export function buildOpenApiDocument() {
             { name: "state", in: "query", schema: { type: "string", maxLength: 80 } },
             { name: "minPrice", in: "query", schema: { type: "number", minimum: 0 } },
             { name: "maxPrice", in: "query", schema: { type: "number", minimum: 0 } },
+            { name: "includeDemo", in: "query", description: "Include official OlogyCrew demo providers. Defaults to false; real providers sort before demos when true.", schema: { type: "boolean", default: false } },
             { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
             { name: "offset", in: "query", schema: { type: "integer", minimum: 0, maximum: 10000, default: 0 } },
           ],
@@ -225,11 +226,12 @@ export function buildOpenApiDocument() {
         },
         ProviderSummary: {
           type: "object",
-          required: ["id", "name", "slug", "profileUrl"],
+          required: ["id", "name", "slug", "isDemo", "profileUrl"],
           properties: {
             id: { type: "integer" },
             name: { type: ["string", "null"] },
             slug: { type: ["string", "null"] },
+            isDemo: { type: "boolean", description: "True only for an official OlogyCrew demo provider." },
             city: { type: ["string", "null"] },
             state: { type: ["string", "null"] },
             profileUrl: { type: ["string", "null"], format: "uri" },
@@ -240,11 +242,12 @@ export function buildOpenApiDocument() {
         },
         ServiceSummary: {
           type: "object",
-          required: ["id", "name", "category", "pricingModel", "price", "bookingMode", "reviewUrl", "handoffEndpoint", "provider"],
+          required: ["id", "name", "isDemo", "category", "pricingModel", "price", "bookingMode", "reviewUrl", "handoffEndpoint", "provider"],
           properties: {
             id: { type: "integer" },
             name: { type: "string" },
             description: { type: ["string", "null"] },
+            isDemo: { type: "boolean", description: "True only when the service belongs to an official OlogyCrew demo provider." },
             category: { $ref: "#/components/schemas/CategoryReference" },
             serviceType: { type: "string" },
             pricingModel: { enum: ["fixed", "hourly", "package", "custom_quote", "consultation"] },
@@ -270,6 +273,25 @@ export function buildOpenApiDocument() {
             },
           },
         },
+        ProviderServiceSummary: {
+          type: "object",
+          required: ["id", "name", "isDemo", "categoryId", "pricingModel", "price", "bookingMode", "reviewUrl", "handoffEndpoint"],
+          properties: {
+            id: { type: "integer" },
+            name: { type: "string" },
+            description: { type: ["string", "null"] },
+            isDemo: { type: "boolean", description: "True only when the service belongs to an official OlogyCrew demo provider." },
+            categoryId: { type: "integer" },
+            serviceType: { type: "string" },
+            pricingModel: { enum: ["fixed", "hourly", "package", "custom_quote", "consultation"] },
+            price: { $ref: "#/components/schemas/Price" },
+            durationMinutes: { type: ["integer", "null"] },
+            isExperience: { type: "boolean" },
+            bookingMode: { enum: ["direct", "quote"] },
+            reviewUrl: { type: "string", format: "uri" },
+            handoffEndpoint: { type: "string", format: "uri" },
+          },
+        },
         ProviderResponse: {
           type: "object",
           required: ["success", "data"],
@@ -277,17 +299,18 @@ export function buildOpenApiDocument() {
             success: { const: true },
             data: {
               type: "object",
-              required: ["id", "name", "slug", "profileUrl", "categories", "services"],
+              required: ["id", "name", "slug", "isDemo", "profileUrl", "categories", "services"],
               properties: {
                 id: { type: "integer" },
                 name: { type: ["string", "null"] },
                 slug: { type: ["string", "null"] },
+                isDemo: { type: "boolean", description: "True only for an official OlogyCrew demo provider." },
                 description: { type: ["string", "null"] },
                 city: { type: ["string", "null"] },
                 state: { type: ["string", "null"] },
                 profileUrl: { type: "string", format: "uri" },
                 categories: { type: "array", items: { $ref: "#/components/schemas/CategoryReference" } },
-                services: { type: "array", items: { type: "object" } },
+                services: { type: "array", items: { $ref: "#/components/schemas/ProviderServiceSummary" } },
               },
             },
           },

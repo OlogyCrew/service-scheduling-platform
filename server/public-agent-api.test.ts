@@ -144,14 +144,46 @@ describe("public agent API", () => {
       state: "GA",
       minPrice: 100,
       maxPrice: 600,
+      includeDemo: false,
       limit: 10,
       offset: 2,
     });
     expect(state.body.data[0]).toMatchObject({
       id: 330003,
+      isDemo: false,
       bookingMode: "direct",
       reviewUrl: "https://ologycrew.com/service/330003?entry=agent-discovery",
-      provider: { slug: "chisolm-audio", city: "Hoschton", state: "Ga" },
+      provider: { slug: "chisolm-audio", city: "Hoschton", state: "Ga", isDemo: false },
+    });
+  });
+
+  it("includes and explicitly labels official demo services only when requested", async () => {
+    dbMocks.searchPublicServicesForAgents.mockResolvedValue({
+      rows: [{
+        ...directService,
+        categoryName: "AUDIO VISUAL CREW",
+        categorySlug: "audio-visual-crew",
+        businessName: "Demo - OlogyCrew",
+        providerSlug: "demo-ologycrew",
+        providerCity: "Atlanta",
+        providerState: "GA",
+        providerRating: null,
+        providerReviewCount: 0,
+        providerOfficial: true,
+        providerTrustLevel: "new",
+        isDemo: true,
+      }],
+      total: 1,
+    });
+    const { res, state } = responseMock();
+
+    await handleSearchServices(request({ query: { includeDemo: "true" } }), res);
+
+    expect(dbMocks.searchPublicServicesForAgents).toHaveBeenCalledWith(expect.objectContaining({ includeDemo: true }));
+    expect(state.body).toMatchObject({ pagination: { total: 1 } });
+    expect(state.body.data[0]).toMatchObject({
+      isDemo: true,
+      provider: { isDemo: true, averageRating: null, totalReviews: 0 },
     });
   });
 
@@ -160,8 +192,19 @@ describe("public agent API", () => {
     await handleGetProvider(request({ params: { slug: "chisolm-audio" } }), res);
 
     expect(state.status).toBe(200);
+    expect(state.body.data.isDemo).toBe(false);
     expect(state.body.data.categories).toEqual([{ id: 15, name: "AUDIO VISUAL CREW", slug: "audio-visual-crew" }]);
-    expect(state.body.data.services[0]).toMatchObject({ id: 330003, bookingMode: "direct" });
+    expect(state.body.data.services[0]).toMatchObject({ id: 330003, isDemo: false, bookingMode: "direct" });
+  });
+
+  it("labels an official provider and every service in its detail response as demo", async () => {
+    dbMocks.getProviderBySlug.mockResolvedValue({ ...provider, isOfficial: true });
+    const { res, state } = responseMock();
+
+    await handleGetProvider(request({ params: { slug: "demo-ologycrew" } }), res);
+
+    expect(state.status).toBe(200);
+    expect(state.body.data).toMatchObject({ isDemo: true, services: [{ id: 330003, isDemo: true }] });
   });
 
   it("returns real category counts and canonical category URLs", async () => {

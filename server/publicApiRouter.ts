@@ -28,6 +28,13 @@ const optionalQueryNumber = z.preprocess(
   (value) => value === undefined || value === "" ? undefined : Number(Array.isArray(value) ? value[0] : value),
   z.number().finite().nonnegative().optional(),
 );
+const queryBooleanWithDefault = (defaultValue: boolean) => z.preprocess((value) => {
+  const normalized = Array.isArray(value) ? value[0] : value;
+  if (normalized === undefined || normalized === "") return defaultValue;
+  if (normalized === "true" || normalized === true) return true;
+  if (normalized === "false" || normalized === false) return false;
+  return normalized;
+}, z.boolean());
 
 const serviceSearchSchema = z.object({
   q: optionalQueryText(200),
@@ -36,6 +43,7 @@ const serviceSearchSchema = z.object({
   state: optionalQueryText(80),
   minPrice: optionalQueryNumber,
   maxPrice: optionalQueryNumber,
+  includeDemo: queryBooleanWithDefault(false),
   limit: z.preprocess((value) => value === undefined ? 20 : Number(Array.isArray(value) ? value[0] : value), z.number().int().min(1).max(50)),
   offset: z.preprocess((value) => value === undefined ? 0 : Number(Array.isArray(value) ? value[0] : value), z.number().int().min(0).max(10_000)),
 }).refine((value) => value.minPrice === undefined || value.maxPrice === undefined || value.minPrice <= value.maxPrice, {
@@ -69,10 +77,12 @@ function publicServicePrice(service: any) {
 
 function publicServiceSummary(service: any) {
   const decision = getAdaptiveBookingDecision(service);
+  const isDemo = Boolean(service.isDemo ?? service.providerOfficial);
   return {
     id: service.id,
     name: service.name,
     description: service.description,
+    isDemo,
     category: {
       id: service.categoryId,
       name: service.categoryName,
@@ -92,6 +102,7 @@ function publicServiceSummary(service: any) {
       slug: service.providerSlug,
       city: service.providerCity,
       state: service.providerState,
+      isDemo,
       profileUrl: service.providerSlug ? ologyCrewPublicUrl(`/${service.providerSlug}`) : null,
       averageRating: service.providerOfficial ? null : numericPrice(service.providerRating),
       totalReviews: service.providerOfficial ? 0 : Number(service.providerReviewCount ?? 0),
@@ -205,6 +216,7 @@ export async function handleSearchServices(req: Request, res: Response) {
       state: input.state,
       minPrice: input.minPrice,
       maxPrice: input.maxPrice,
+      includeDemo: input.includeDemo,
       limit: input.limit,
       offset: input.offset,
     });
@@ -246,6 +258,7 @@ export async function handleGetProvider(req: Request, res: Response) {
         id: provider.id,
         name: provider.businessName,
         slug: provider.profileSlug,
+        isDemo: Boolean(provider.isOfficial),
         description: provider.description,
         city: provider.city,
         state: provider.state,
@@ -272,6 +285,7 @@ export async function handleGetProvider(req: Request, res: Response) {
             id: service.id,
             name: service.name,
             description: service.description,
+            isDemo: Boolean(provider.isOfficial),
             categoryId: service.categoryId,
             serviceType: service.serviceType,
             pricingModel: service.pricingModel,
@@ -463,7 +477,7 @@ export async function handlePublicApiDocs(_req: Request, res: Response) {
       customerMustReviewAndSubmit: true,
     },
     endpoints: [
-      { method: "GET", path: "/services", description: "Search active services by keyword, category, provider location, and public price" },
+      { method: "GET", path: "/services", description: "Search active services by keyword, category, provider location, and public price. Official demo providers are excluded unless includeDemo=true." },
       { method: "GET", path: "/providers/:slug", description: "Get an active provider's public profile, categories, trust context, and active services" },
       { method: "GET", path: "/availability/:providerId?serviceId={id}&date=YYYY-MM-DD", description: "Get service-duration-specific available starts without revealing booking details or creating a hold" },
       { method: "GET", path: "/categories", description: "List active service categories with active-service counts" },

@@ -1,6 +1,13 @@
 import mysql from "mysql2/promise";
 
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required");
+// The live marketplace can grow between releases. A test runner may supply its
+// read-only pre-run counts; the historical cleanup baseline remains the default.
+const expectedAdminRealCounts = JSON.parse(process.env.CLEANUP_EXPECTED_COUNTS ?? '{"users":22,"providers":13,"bookings":7}');
+if (!expectedAdminRealCounts || Object.keys(expectedAdminRealCounts).length !== 3 ||
+    !["users", "providers", "bookings"].every(key => Number.isSafeInteger(expectedAdminRealCounts[key]) && expectedAdminRealCounts[key] >= 0)) {
+  throw new Error("CLEANUP_EXPECTED_COUNTS must contain exactly three nonnegative integer counts: users, providers, bookings");
+}
 const connection = await mysql.createConnection(process.env.DATABASE_URL);
 const scalar = async (sql, params = []) => Number((await connection.query(sql, params))[0][0]?.count ?? 0);
 
@@ -69,13 +76,14 @@ const result = {
   deletedScopeRemaining: { exactTestUsers, exactTestProviders, prattisRows, prattisSubscriptions, orphanRows },
   protected: { officialDemo, protectedAdmins, partnerTransfers, totalAuditRows, preservedAuditTargets },
   adminRealCounts: { users: realUsers, providers: realProviders, bookings: realBookings },
+  expectedAdminRealCounts,
 };
 const remaining = [exactTestUsers, exactTestProviders, prattisRows, prattisSubscriptions, ...Object.values(orphanRows)].reduce((sum, value) => sum + value, 0);
 if (remaining !== 0) throw new Error(`Approved test scope still has ${remaining} records`);
 if (officialDemo.length !== 1 || Number(officialDemo[0].isActive) !== 1 || Number(officialDemo[0].services) < 1) throw new Error("Official demo was not preserved correctly");
 if (protectedAdmins.length !== 2 || protectedAdmins.some((item) => item.deletedAt)) throw new Error("Gary or Winston was not preserved correctly");
 if (partnerTransfers !== 11 || totalAuditRows < 84) throw new Error("Protected transfer or audit history changed unexpectedly");
-if (realUsers !== 22 || realProviders !== 13 || realBookings !== 7) throw new Error(`Admin real counts drifted: ${JSON.stringify({ realUsers, realProviders, realBookings })}`);
+if (realUsers !== expectedAdminRealCounts.users || realProviders !== expectedAdminRealCounts.providers || realBookings !== expectedAdminRealCounts.bookings) throw new Error(`Admin real counts drifted: ${JSON.stringify({ realUsers, realProviders, realBookings })}`);
 
 console.log(JSON.stringify(result, null, 2));
 await connection.end();

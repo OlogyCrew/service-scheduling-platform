@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -63,10 +63,16 @@ const customer = { id: 22, openId: "customer-open-id", role: "customer", adminRo
 describe("owner-controlled Terms workflow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Freeze only Date, not promise/timer scheduling, so fixture dates stay
+    // deterministic and the production future-effective-date guard is tested.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(now);
     dbMocks.listTermsVersions.mockResolvedValue([]);
     dbMocks.getTermsAudienceUsers.mockResolvedValue([]);
     dbMocks.getTermsDeliverySummary.mockResolvedValue({ total: 0, pending: 0, sent: 0, failed: 0, skipped: 0, inAppNotified: 0, shown: 0, acknowledged: 0, accepted: 0 });
   });
+
+  afterEach(() => vi.useRealTimers());
 
   it("blocks non-owner administrators from legal publication controls", async () => {
     await expect(caller(supportAdmin).adminList()).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -137,6 +143,14 @@ describe("owner-controlled Terms workflow", () => {
     expect(dbMocks.publishTermsVersion).toHaveBeenCalledWith(12, 1);
     expect(deliverTermsUpdate).toHaveBeenCalledWith(publishedVersion);
     expect(createAuditEntry).toHaveBeenCalledWith(expect.objectContaining({ action: "publish_terms_version", targetId: 12 }));
+  });
+
+  it("rejects publication once the effective time is reached without delivering notices", async () => {
+    vi.setSystemTime(effectiveAt);
+    dbMocks.getTermsVersionById.mockResolvedValue(version);
+    await expect(caller(owner).publish({ id: 12, confirmation: "PUBLISH" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(dbMocks.publishTermsVersion).not.toHaveBeenCalled();
+    expect(deliverTermsUpdate).not.toHaveBeenCalled();
   });
 
   it("does not allow a published Terms record to be edited or republished", async () => {

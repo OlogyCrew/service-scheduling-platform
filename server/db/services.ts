@@ -72,6 +72,8 @@ export type PublicAgentServiceSearchInput = {
   state?: string;
   minPrice?: number;
   maxPrice?: number;
+  /** The public agent endpoint always supplies this; undefined preserves existing internal callers. */
+  includeDemo?: boolean;
   limit: number;
   offset: number;
 };
@@ -88,6 +90,12 @@ export async function searchPublicServicesForAgents(input: PublicAgentServiceSea
     isNull(users.deletedAt),
     eq(serviceCategories.isActive, true),
   ];
+
+  // Official providers are OlogyCrew demos. Keep legacy internal callers unchanged
+  // when they omit the option, while the agent endpoint defaults it to false.
+  if (input.includeDemo === false) {
+    conditions.push(eq(serviceProviders.isOfficial, false));
+  }
 
   const query = input.query?.trim();
   if (query) {
@@ -158,6 +166,7 @@ export async function searchPublicServicesForAgents(input: PublicAgentServiceSea
       providerRating: serviceProviders.averageRating,
       providerReviewCount: serviceProviders.totalReviews,
       providerOfficial: serviceProviders.isOfficial,
+      isDemo: serviceProviders.isOfficial,
       providerTrustLevel: serviceProviders.trustLevel,
     })
       .from(services)
@@ -166,7 +175,7 @@ export async function searchPublicServicesForAgents(input: PublicAgentServiceSea
       .innerJoin(serviceCategories, eq(services.categoryId, serviceCategories.id))
       .where(whereClause)
       .orderBy(
-        desc(serviceProviders.isOfficial),
+        input.includeDemo === true ? asc(serviceProviders.isOfficial) : desc(serviceProviders.isOfficial),
         desc(serviceProviders.trustScore),
         desc(serviceProviders.averageRating),
         asc(services.name),

@@ -1,6 +1,6 @@
 {
   "name": "OlogyCrew",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Marketplace for discovering service providers and preparing customer-reviewed booking or quote handoffs.",
   "url": "https://ologycrew.com",
   "logo": "https://d2xsxph8kpxj0f.cloudfront.net/310519663275372790/QD7eHrqop9F5cN2Q4sYGpD/logo-navbar_38427c60.png",
@@ -12,9 +12,9 @@
   },
   "capabilities": {
     "search_services": {
-      "description": "Search active services by keyword, category, provider location, or public price.",
+      "description": "Search active non-demo services by keyword, category, provider location, or public price. Set includeDemo=true to include official demos, labeled isDemo=true after real providers.",
       "endpoint": "GET /api/public/services",
-      "parameters": ["q", "category", "city", "state", "minPrice", "maxPrice", "limit", "offset"]
+      "parameters": ["q", "category", "city", "state", "minPrice", "maxPrice", "includeDemo", "limit", "offset"]
     },
     "get_provider": {
       "description": "Read an active provider's public profile, trust context, categories, and services.",

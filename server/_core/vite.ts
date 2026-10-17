@@ -259,7 +259,9 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // The homepage must reach the HTML handler below so crawler-visible OG and
+  // JSON-LD are injected. Keep assets and Google verification files static.
+  app.use(express.static(distPath, { index: false }));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", async (req, res) => {

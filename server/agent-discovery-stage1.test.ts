@@ -72,16 +72,24 @@ describe("agent discovery documents", () => {
     const llms = buildLlmsTxt();
     const openapi = buildOpenApiDocument();
 
-    expect(manifest.version).toBe("1.1.0");
+    expect(manifest.version).toBe("1.1.1");
     expect(staticManifest).toEqual(manifest);
     expect(manifest.capabilities.prepare_review_handoff.endpoint).toBe("POST /api/public/handoffs");
+    expect(manifest.capabilities.search_services.parameters).toContain("includeDemo");
     expect(manifest.transactionPolicy).toMatchObject({ agentCanCreateBooking: false, agentCanCollectPayment: false, customerMustReviewAndSubmit: true });
     expect(llms).toContain("does not create bookings, quote requests, availability holds");
+    expect(llms).toContain("includeDemo=true");
     expect(llms).toContain("https://ologycrew.com/openapi.json");
     expect(openapi.openapi).toBe("3.1.0");
+    expect(openapi.paths["/services"].get.parameters).toContainEqual(expect.objectContaining({ name: "includeDemo", schema: { type: "boolean", default: false } }));
     expect(openapi.components.schemas.ServiceSearchResponse).toBeDefined();
     expect(openapi.components.schemas.HandoffResponse).toBeDefined();
     expect(openapi.components.schemas.ServiceSummary.properties.category.$ref).toBe("#/components/schemas/CategoryReference");
+    expect(openapi.components.schemas.ServiceSummary.required).toContain("isDemo");
+    expect(openapi.components.schemas.ProviderSummary.required).toContain("isDemo");
+    expect(openapi.components.schemas.ProviderResponse.properties.data.required).toContain("isDemo");
+    expect(openapi.components.schemas.ProviderServiceSummary.required).toContain("isDemo");
+    expect(openapi.components.schemas.ProviderResponse.properties.data.properties.services.items.$ref).toBe("#/components/schemas/ProviderServiceSummary");
     expect(manifest.schedulingTimezone).toBe("America/New_York");
     expect(llms).toContain("America/New_York");
     expect(openapi.paths["/handoffs"].post.description).toContain("creates no booking, quote, hold, payment");
