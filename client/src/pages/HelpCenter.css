@@ -1,6 +1,8 @@
 @import "../styles/publicBrandTokens.css";
 
 .ology-help {
+  /* Keep the hero's first-child margin inside this page's paper background. */
+  display: flow-root;
   --help-ink: var(--ology-brand-ink);
   --help-deep: var(--ology-brand-deep);
   --help-muted: var(--ology-brand-muted);
