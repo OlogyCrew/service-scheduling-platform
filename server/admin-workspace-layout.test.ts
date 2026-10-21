@@ -42,7 +42,7 @@ describe("admin workspace layout and palette boundaries", () => {
     expect(css).toContain("var(--ology-brand-paper)");
     expect(css).toContain("var(--ology-brand-deep)");
     expect(css).toContain("var(--ology-brand-coral)");
-    expect(css).toContain("var(--ology-brand-leaf)");
+    expect(css).toContain("background: #e6edd8");
     expect(css).toContain("focus-visible");
     expect(css).toContain("prefers-reduced-motion");
     expect(css).toContain("max-width: 1023px");

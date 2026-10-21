@@ -5,25 +5,30 @@
   color: var(--ology-brand-ink);
   font-family: var(--ology-brand-body);
   min-height: 100vh;
+  --ology-admin-section-gap: 20px;
 }
 .ology-admin-workspace { width: min(1600px, calc(100% - 64px)); margin: 28px auto 0; padding-bottom: 64px; }
-.ology-admin-grid { display: grid; grid-template-columns: 224px minmax(0, 1fr); align-items: start; gap: 28px; }
+.ology-admin-grid { display: grid; grid-template-columns: 224px minmax(0, 1fr); align-items: start; gap: 24px; }
 .ology-admin-sidebar { position: sticky; top: 108px; max-height: calc(100dvh - 130px); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--ology-brand-line); border-radius: 12px; background: var(--ology-brand-surface); padding: 17px 10px; }
 .ology-admin-sidebar-title { color: var(--ology-brand-deep); font-family: var(--ology-brand-display); font-size: 16px; font-weight: 800; padding: 0 10px 13px; }
 .ology-admin-sidebar-title span { display: block; color: var(--ology-brand-muted); font-family: var(--ology-brand-body); font-size: 12px; font-weight: 500; margin-top: 4px; }
-.ology-admin-nav-list { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; height: auto; background: transparent; padding: 0; gap: 14px; }
+.ology-admin-nav-list { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; height: auto; background: transparent; padding: 0; gap: 10px; }
 .ology-admin-nav-group { width: 100%; }
 .ology-admin-nav-group-label { padding: 0 10px; margin: 0 0 5px; color: var(--ology-brand-muted); font-size: 10px; line-height: 1.4; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.ology-admin-nav-list .ology-admin-nav-item { display: flex; flex: none; width: 100%; min-height: 37px; height: auto; justify-content: flex-start; gap: 9px; padding: 8px 10px; color: var(--ology-brand-ink); background: transparent; border-radius: 7px; box-shadow: none; font-size: 13px; white-space: normal; text-align: left; transition: background-color 160ms var(--ology-brand-ease); }
-.ology-admin-nav-list .ology-admin-nav-item:hover { background: #eef2e7; }
-.ology-admin-nav-list .ology-admin-nav-item[data-state="active"] { background: var(--ology-brand-deep); color: var(--ology-brand-surface); box-shadow: inset 3px 0 var(--ology-brand-leaf); }
+.ology-admin-nav-list .ology-admin-nav-item { display: flex; flex: none; width: 100%; min-height: 37px; height: auto; justify-content: flex-start; gap: 9px; padding: 8px 10px; color: var(--ology-brand-ink); background: transparent; border-radius: 12px; box-shadow: none; font-size: 13px; white-space: normal; text-align: left; transition: background-color 150ms var(--ology-brand-ease), color 150ms var(--ology-brand-ease), transform 150ms var(--ology-brand-ease); }
+.ology-admin-nav-list .ology-admin-nav-item:not([data-state="active"]):hover { background: #f0f3e9; color: var(--ology-brand-deep); }
+.ology-admin-nav-list .ology-admin-nav-item[data-state="active"] { background: #e6edd8; color: var(--ology-brand-deep); font-weight: 700; box-shadow: none; }
+.ology-admin-nav-list .ology-admin-nav-item:active { transform: scale(.98); }
 .ology-admin-nav-list .ology-admin-nav-item:focus-visible { outline: var(--ology-brand-focus); outline-offset: 2px; }
 .ology-admin-content { min-width: 0; }
-.ology-admin-heading { margin-bottom: 22px; }
+.ology-admin-heading { margin-bottom: var(--ology-admin-section-gap); }
 .ology-admin-heading h1 { font-family: var(--ology-brand-display); color: var(--ology-brand-deep); font-size: clamp(25px, 3vw, 33px); line-height: 1.2; font-weight: 800; letter-spacing: -.035em; margin: 0; }
 .ology-admin-heading > p { margin: 6px 0 0; color: var(--ology-brand-muted); font-size: 14px; }
 .ology-admin-scope-note { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; border: 1px solid var(--ology-brand-line); border-radius: 8px; background: #e9eee3; color: var(--ology-brand-ink); padding: 9px 12px; font-size: 12px; line-height: 1.5; }
-.ology-admin-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
+.ology-admin-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: var(--ology-admin-section-gap); }
+.ology-admin-overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: var(--ology-admin-section-gap); }
+.ology-admin-overview-stack { display: flex; flex-direction: column; min-width: 0; gap: var(--ology-admin-section-gap); }
+.ology-admin-overview-health { margin-top: var(--ology-admin-section-gap); }
 .ology-admin .ology-admin-metrics [data-slot="card"] { gap: 12px; padding: 0; }
 .ology-admin .ology-admin-metrics [data-slot="card-header"] { padding: 18px 18px 0; }
 .ology-admin .ology-admin-metrics [data-slot="card-content"] { padding: 0 18px 18px; }
@@ -51,5 +56,6 @@
 .ology-admin-bookings-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; }
 @media (max-width: 1279px) { .ology-admin-grid { grid-template-columns: 208px minmax(0,1fr); gap: 20px; } .ology-admin-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 1023px) { .ology-admin-workspace { width: calc(100% - 40px); margin-top: 20px; } .ology-admin-grid { display: block; } }
-@media (max-width: 640px) { .ology-admin-workspace { width: calc(100% - 32px); margin-top: 16px; } .ology-admin-heading { margin-bottom: 16px; } .ology-admin-metrics { gap: 10px; } .ology-admin .ology-admin-metrics [data-slot="card-header"] { padding: 14px 12px 0; } .ology-admin .ology-admin-metrics [data-slot="card-content"] { padding: 0 12px 14px; } .ology-admin .ology-admin-metrics [data-slot="card-title"] { font-size: 12px; } .ology-admin .ology-admin-metrics .text-2xl { font-size: 23px; } }
+@media (max-width: 767px) { .ology-admin-overview-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .ology-admin { --ology-admin-section-gap: 16px; } .ology-admin-workspace { width: calc(100% - 32px); margin-top: 16px; } .ology-admin-metrics { gap: 10px; } .ology-admin .ology-admin-metrics [data-slot="card-header"] { padding: 14px 12px 0; } .ology-admin .ology-admin-metrics [data-slot="card-content"] { padding: 0 12px 14px; } .ology-admin .ology-admin-metrics [data-slot="card-title"] { font-size: 12px; } .ology-admin .ology-admin-metrics .text-2xl { font-size: 23px; } }
 @media (prefers-reduced-motion: reduce) { .ology-admin *, .ology-admin-drawer * { transition-duration: .01ms !important; animation-duration: .01ms !important; } }

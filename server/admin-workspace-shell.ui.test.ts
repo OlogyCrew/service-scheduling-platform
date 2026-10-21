@@ -73,6 +73,21 @@ describe("admin integrated workspace shell", () => {
     expect(screen.queryByText("Total Users")).toBeNull();
     expect(screen.getByRole("button", { name: "Retry overview" })).toBeEnabled();
   });
+  it("keeps evidence and bulk activity in an independent stack beside recent bookings", () => {
+    render(React.createElement(AdminDashboard));
+    const evidence = screen.getByText("Pending Evidence Reviews").closest(".ology-admin-overview-stack");
+    const bulk = screen.getByText("Bulk Booking Activity").closest(".ology-admin-overview-stack");
+    const recent = screen.getByText("Recent Bookings").closest(".ology-admin-overview-stack");
+    expect(evidence).not.toBeNull();
+    expect(evidence).toBe(bulk);
+    expect(recent).not.toBeNull();
+    expect(recent).not.toBe(evidence);
+    expect(document.querySelectorAll(".ology-admin-overview-stack")).toHaveLength(2);
+    expect(screen.getByText("No pending evidence")).toBeVisible();
+    expect(screen.getByText("No bookings yet")).toBeVisible();
+    expect(mocks.calls.filter(call => call.path === "admin.searchBookingsFiltered").every(call => call.input.limit === 5)).toBe(true);
+    expect(mocks.mutate).not.toHaveBeenCalled();
+  });
   it("denies a non-admin without showing admin navigation or requesting enabled admin data", () => {
     mocks.role = "user";
     render(React.createElement(AdminDashboard));
