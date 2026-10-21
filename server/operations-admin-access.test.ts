@@ -65,8 +65,8 @@ describe("scoped operations admin", () => {
     expect(source("server/db/users.ts")).toContain("isApprovedSuperAdminEmail(user.email)");
     const dashboard = source("client/src/pages/AdminDashboard.tsx");
     expect(dashboard).toContain('["partner", "team", "legal", "customers-pilot"].includes(activeTab)');
-    expect(dashboard).toContain('{isOwnerAdmin ? <TabsContent value="partner">');
-    expect(dashboard).toContain('{isOwnerAdmin ? <TabsContent value="team">');
+    expect(dashboard).toContain('{isOwnerAdmin ? <TabsContent value="partner" aria-labelledby="admin-section-heading">');
+    expect(dashboard).toContain('{isOwnerAdmin ? <TabsContent value="team" aria-labelledby="admin-section-heading">');
     expect(source("client/src/contexts/ViewModeContext.tsx")).toContain('(isAdmin && !!providerProfile)');
   });
 });

@@ -539,8 +539,8 @@ export const adminRouter = router({
     .input(z.object({
       query: z.string().optional(),
       status: z.string().optional(),
-      page: z.number().default(1),
-      limit: z.number().default(25),
+      page: z.number().int().min(1).max(10_000).default(1),
+      limit: z.number().int().min(1).max(100).default(25),
     }))
     .query(async ({ input }) => {
       const allBookings = await db.getAllBookings();
@@ -553,7 +553,9 @@ export const adminRouter = router({
           (b.customerName && b.customerName.toLowerCase().includes(q)) ||
           (b.providerName && b.providerName.toLowerCase().includes(q)) ||
           (b.serviceName && b.serviceName.toLowerCase().includes(q)) ||
-          (b.bookingNumber && b.bookingNumber.toLowerCase().includes(q))
+          (b.bookingNumber && b.bookingNumber.toLowerCase().includes(q)) ||
+          (b.status && b.status.toLowerCase().includes(q)) ||
+          (b.bookingDate && b.bookingDate.includes(q))
         );
       }
 

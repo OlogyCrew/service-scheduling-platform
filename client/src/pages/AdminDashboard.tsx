@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { formatPrice } from "@shared/formatPrice";
 import { useProtectedPage } from "@/hooks/useProtectedPage";
@@ -69,7 +69,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { Link, useSearch } from "wouter";
+import { Link, useSearch, useLocation } from "wouter";
 import AdminSocialMedia from "./AdminSocialMedia";
 import { AdminTermsManagement } from "./admin/AdminTermsManagement";
 import { formatCurrency, formatDate } from "@/lib/dateUtils";
@@ -78,6 +78,10 @@ import { NavHeader } from "@/components/shared/NavHeader";
 import { TeamManagementPanel } from "./admin/TeamManagementPanel";
 import { AuditLogPanel } from "./admin/AuditLogPanel";
 import { CustomersPilotHealthPanel } from "./admin/CustomersPilotHealthPanel";
+import { AdminNavigation } from "./admin/AdminNavigation";
+import { getAdminSectionLabel, resolveAdminSection } from "./admin/adminNavigation";
+import { AdminBookingsPanel } from "./admin/AdminBookingsPanel";
+import "./admin/AdminWorkspace.css";
 
 function SystemHealthOverview() {
   const { data, isLoading, refetch, isFetching } = trpc.admin.getSystemHealth.useQuery(undefined, {
@@ -113,6 +117,8 @@ function SystemHealthOverview() {
         </div>
       </CardHeader>
       <CardContent>
+        <details className="ology-admin-health-details" open={data.status !== "healthy" ? true : undefined}>
+        <summary className="ology-admin-health-summary">Integration details</summary>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {healthItems.map((item) => {
             const Icon = item.icon;
@@ -128,6 +134,7 @@ function SystemHealthOverview() {
           })}
         </div>
         <p className="mt-3 text-right text-[11px] text-muted-foreground">Checked {new Date(data.checkedAt).toLocaleTimeString()}</p>
+        </details>
       </CardContent>
     </Card>
   );
@@ -445,7 +452,7 @@ export default function AdminDashboard() {
   const searchString = useSearch();
   const urlTab = new URLSearchParams(searchString).get("tab");
   const [activeTab, setActiveTab] = useState(urlTab || "overview");
-  const [bookingSearch, setBookingSearch] = useState("");
+  const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   
   useProtectedPage();
@@ -456,6 +463,7 @@ export default function AdminDashboard() {
     onSuccess: (data) => {
       setRecalculateResult(data);
       utils.admin.listProviders.invalidate();
+      utils.admin.searchProvidersFiltered.invalidate();
       toast.success(`Trust scores recalculated for ${data.updated} providers`);
     },
     onError: (err) => toast.error(err.message),
@@ -463,16 +471,22 @@ export default function AdminDashboard() {
 
   const isAdmin = user?.role === "admin";
   const isOwnerAdmin = isAdmin && user?.adminRole === "super_admin";
-  const visibleTab = !isOwnerAdmin && ["partner", "team", "legal", "customers-pilot"].includes(activeTab) ? "overview" : activeTab;
-  const { data: stats, isLoading: statsLoading } = trpc.admin.getStats.useQuery(undefined, { enabled: isAdmin });
-  const { data: users, isLoading: usersLoading } = trpc.admin.listUsers.useQuery(undefined, { enabled: isAdmin });
-  const { data: providers, isLoading: providersLoading } = trpc.admin.listProviders.useQuery(undefined, { enabled: isAdmin });
-  const { data: bookings, isLoading: bookingsLoading } = trpc.admin.listBookings.useQuery(undefined, { enabled: isAdmin });
-  const { data: pendingEvidence } = trpc.verification.listPending.useQuery(undefined, { enabled: isAdmin });
+  const visibleTab = !isOwnerAdmin && ["partner", "team", "legal", "customers-pilot"].includes(activeTab) ? "overview" : resolveAdminSection(activeTab, isOwnerAdmin);
+  useEffect(() => { setActiveTab(resolveAdminSection(urlTab, isOwnerAdmin)); }, [urlTab, isOwnerAdmin]);
+  const selectSection = (section: string) => {
+    const next = resolveAdminSection(section, isOwnerAdmin);
+    setActiveTab(next);
+    navigate(`/admin?tab=${next}`);
+  };
+  const { data: stats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = trpc.admin.getStats.useQuery(undefined, { enabled: isAdmin && visibleTab === "overview" });
+  const { data: overviewBookings, isLoading: overviewBookingsLoading } = trpc.admin.searchBookingsFiltered.useQuery({ page: 1, limit: 5 }, { enabled: isAdmin && visibleTab === "overview" });
+  const bookings = overviewBookings?.bookings;
+  const { data: pendingEvidence } = trpc.verification.listPending.useQuery(undefined, { enabled: isAdmin && visibleTab === "overview" });
 
   const suspendUser = trpc.admin.suspendUser.useMutation({
     onSuccess: () => {
       utils.admin.listUsers.invalidate();
+      utils.admin.searchUsersFiltered.invalidate();
       utils.admin.getStats.invalidate();
       toast.success("User suspended");
     },
@@ -482,6 +496,7 @@ export default function AdminDashboard() {
   const unsuspendUser = trpc.admin.unsuspendUser.useMutation({
     onSuccess: () => {
       utils.admin.listUsers.invalidate();
+      utils.admin.searchUsersFiltered.invalidate();
       toast.success("User unsuspended");
     },
     onError: (err) => toast.error(err.message),
@@ -490,6 +505,7 @@ export default function AdminDashboard() {
   const toggleProviderActive = trpc.admin.toggleProviderActive.useMutation({
     onSuccess: (_data, variables) => {
       utils.admin.listProviders.invalidate();
+      utils.admin.searchProvidersFiltered.invalidate();
       toast.success(variables.isActive ? "Provider activated" : "Provider deactivated");
     },
     onError: (err) => toast.error(err.message),
@@ -517,26 +533,27 @@ export default function AdminDashboard() {
     );
   }
 
-  if (statsLoading) {
-    return <LoadingSpinner message="Loading admin dashboard..." />;
-  }
-
   return (
-    <div className="min-h-screen bg-page">
+    <div className="ology-admin">
       <NavHeader />
 
-      <div className="container py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Platform management and oversight</p>
-          <div className="mt-3 inline-flex max-w-full items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-950 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
+      <div className="ology-admin-workspace">
+        <Tabs value={visibleTab} onValueChange={selectSection} orientation="vertical" activationMode="manual" className="ology-admin-grid">
+          <AdminNavigation isOwnerAdmin={isOwnerAdmin} activeSection={visibleTab} />
+          <main className="ology-admin-content" aria-labelledby="admin-section-heading">
+        <div className="ology-admin-heading">
+          <h1 id="admin-section-heading">{visibleTab === "overview" ? "Admin Overview" : getAdminSectionLabel(visibleTab)}</h1>
+          <p>Platform management and oversight</p>
+          <div className="ology-admin-scope-note">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
             <p><strong>Real activity view:</strong> official demo and reserved test records are excluded from users, providers, bookings, reviews, subscriptions, and KPI totals.</p>
           </div>
         </div>
 
+          <TabsContent value="overview" aria-labelledby="admin-section-heading">
+          {statsLoading ? <LoadingSpinner message="Loading overview..." /> : statsError ? <Card><CardContent className="p-6" role="alert"><p>Overview is unavailable. Please try again.</p><Button variant="outline" className="mt-3" onClick={() => refetchStats()}>Retry overview</Button></CardContent></Card> : <>
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="ology-admin-metrics">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -590,73 +607,7 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Tabs */}
-        <Tabs value={visibleTab} onValueChange={setActiveTab}>
-          <div className="mb-6 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
-            <TabsList className="w-max flex-nowrap">
-              <TabsTrigger value="overview" className="whitespace-nowrap text-xs md:text-sm">Overview</TabsTrigger>
-              <TabsTrigger value="subscriptions" className="whitespace-nowrap text-xs md:text-sm">
-                <Crown className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
-                Subscriptions
-              </TabsTrigger>
-              <TabsTrigger value="users" className="whitespace-nowrap text-xs md:text-sm">Users ({users?.length || 0})</TabsTrigger>
-              <TabsTrigger value="providers" className="whitespace-nowrap text-xs md:text-sm">Providers ({stats?.totalProviders || providers?.length || 0})</TabsTrigger>
-              <TabsTrigger value="bookings" className="whitespace-nowrap text-xs md:text-sm">Bookings ({bookings?.length || 0})</TabsTrigger>
-              <TabsTrigger value="reviews" className="whitespace-nowrap text-xs md:text-sm">
-                <Star className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
-                Reviews
-              </TabsTrigger>
-              <TabsTrigger value="documents" className="whitespace-nowrap text-xs md:text-sm">
-                <FileText className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
-                Documents
-              </TabsTrigger>
-              {user?.adminRole === "super_admin" ? <TabsTrigger value="legal" className="whitespace-nowrap text-xs md:text-sm">
-                <FileText className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
-                Legal Terms
-              </TabsTrigger> : null}
-              {user?.adminRole === "super_admin" ? <TabsTrigger value="customers-pilot" className="whitespace-nowrap text-xs md:text-sm">
-                <ShieldCheck className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
-                Customers Rollout
-              </TabsTrigger> : null}
-              <TabsTrigger value="support" className="whitespace-nowrap text-xs md:text-sm">
-                <MessageSquare className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
-                Support
-              </TabsTrigger>
-              <TabsTrigger value="referrals" className="whitespace-nowrap text-xs md:text-sm">
-                <UserPlus className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
-                Referrals
-              </TabsTrigger>
-              <TabsTrigger value="push" className="whitespace-nowrap text-xs md:text-sm">
-                <Bell className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
-                Push
-              </TabsTrigger>
-              {isOwnerAdmin ? <TabsTrigger value="team" className="whitespace-nowrap text-xs md:text-sm">
-                <Shield className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
-                Team
-              </TabsTrigger> : null}
-              <TabsTrigger value="audit" className="whitespace-nowrap text-xs md:text-sm">
-                <Activity className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
-                Audit Log
-              </TabsTrigger>
-              {isOwnerAdmin ? <TabsTrigger value="partner" className="whitespace-nowrap text-xs md:text-sm">
-                <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
-                Partner Split
-              </TabsTrigger> : null}
-              <TabsTrigger value="social-media" className="whitespace-nowrap text-xs md:text-sm">
-                <Share2 className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
-                Social Media
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="whitespace-nowrap text-xs md:text-sm">
-                <Settings className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
-                Settings
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview">
-            <SystemHealthOverview />
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 items-start gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Pending Evidence Reviews</CardTitle>
@@ -673,7 +624,7 @@ export default function AdminDashboard() {
                             <p className="text-sm font-medium truncate">{item.providerName}</p>
                             <p className="text-xs text-muted-foreground">{item.document.documentLabel || item.document.documentType.replaceAll("_", " ")}</p>
                           </div>
-                          <Button size="sm" variant="outline" className="text-xs px-2" onClick={() => setActiveTab("documents")}>
+                          <Button size="sm" variant="outline" className="text-xs px-2" onClick={() => selectSection("documents")}>
                             Review evidence
                           </Button>
                         </div>
@@ -689,18 +640,18 @@ export default function AdminDashboard() {
                   <CardDescription>Latest platform bookings</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {bookings?.length === 0 ? (
+                  {overviewBookingsLoading ? <p className="text-sm text-muted-foreground py-4">Loading recent bookings…</p> : !bookings ? <p className="text-sm text-muted-foreground py-4">Recent bookings are unavailable.</p> : bookings.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">No bookings yet</p>
                   ) : (
                     <div className="space-y-3">
                       {bookings?.slice(0, 5).map((booking: any) => (
-                        <div key={booking.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                          <div>
+                        <div key={booking.id} className="flex flex-col items-start sm:flex-row sm:items-center justify-between gap-2 py-2 border-b last:border-0">
+                          <div className="min-w-0">
                             <p className="text-sm font-medium">{booking.serviceName || 'Service'}</p>
-                            <p className="text-xs text-muted-foreground font-mono">{booking.bookingNumber}</p>
+                            <p className="text-xs text-muted-foreground font-mono break-all">{booking.bookingNumber}</p>
                             <p className="text-xs text-muted-foreground">{booking.bookingDate}</p>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex shrink-0 self-end sm:self-auto items-center gap-2">
                             <span className="text-sm font-medium">{formatCurrency(parseFloat(booking.totalAmount || "0"))}</span>
                             <Badge variant={
                               booking.status === "completed" ? "default" :
@@ -740,20 +691,22 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
             </div>
+            <div className="mt-6"><SystemHealthOverview /></div>
+            </>}
           </TabsContent>
 
           {/* Subscriptions Tab */}
-          <TabsContent value="subscriptions">
+          <TabsContent value="subscriptions" aria-labelledby="admin-section-heading">
             <SubscriptionAnalyticsPanel />
           </TabsContent>
 
           {/* Users Tab */}
-          <TabsContent value="users">
+          <TabsContent value="users" aria-labelledby="admin-section-heading">
             <UsersFilterPanel suspendUser={suspendUser} unsuspendUser={unsuspendUser} />
           </TabsContent>
 
           {/* Providers Tab */}
-          <TabsContent value="providers">
+          <TabsContent value="providers" aria-labelledby="admin-section-heading">
             {/* Bulk Trust Recalculation Card */}
             <Card className="mb-6 border-amber-200 bg-amber-50/50">
               <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
@@ -790,141 +743,66 @@ export default function AdminDashboard() {
           </TabsContent>
 
           {/* Bookings Tab */}
-          <TabsContent value="bookings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Booking Management</CardTitle>
-                <CardDescription>Monitor all platform bookings</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {/* Booking Search */}
-                <div className="relative mb-4">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search bookings..."
-                    value={bookingSearch}
-                    onChange={(e) => setBookingSearch(e.target.value)}
-                    className="pl-9 pr-9 text-sm"
-                  />
-                  {bookingSearch && (
-                    <button
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      onClick={() => setBookingSearch("")}
-                    >
-                      <XCircle className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-                {bookingsLoading ? (
-                  <LoadingSpinner />
-                ) : (
-                  <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Booking #</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Time</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {bookings?.filter((booking: any) => {
-                        if (!bookingSearch.trim()) return true;
-                        const q = bookingSearch.toLowerCase();
-                        return (booking.bookingNumber || "").toLowerCase().includes(q) ||
-                          (booking.serviceName || "").toLowerCase().includes(q) ||
-                          (booking.status || "").toLowerCase().includes(q) ||
-                          (booking.bookingDate || "").includes(q);
-                      }).map((booking: any) => (
-                        <TableRow key={booking.id}>
-                          <TableCell>
-                            <p className="font-medium">{booking.serviceName || 'Service'}</p>
-                            <p className="text-xs text-muted-foreground font-mono">{booking.bookingNumber}</p>
-                          </TableCell>
-                          <TableCell>{booking.bookingDate}</TableCell>
-                          <TableCell>{formatTimeForDisplay(booking.startTime)} - {formatTimeForDisplay(booking.endTime)}</TableCell>
-                          <TableCell className="capitalize">{booking.locationType?.replace('_', ' ')}</TableCell>
-                          <TableCell>{formatCurrency(parseFloat(booking.totalAmount || "0"))}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                booking.status === "confirmed" ? "default" :
-                                booking.status === "completed" ? "default" :
-                                booking.status === "cancelled" ? "destructive" :
-                                "secondary"
-                              }
-                            >
-                              {booking.status}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <TabsContent value="bookings" aria-labelledby="admin-section-heading">
+            <AdminBookingsPanel />
           </TabsContent>
 
           {/* Reviews Moderation Tab */}
-          <TabsContent value="reviews">
+          <TabsContent value="reviews" aria-labelledby="admin-section-heading">
             <ReviewModerationPanel />
           </TabsContent>
 
           {/* Verification Documents Tab */}
-          <TabsContent value="documents">
+          <TabsContent value="documents" aria-labelledby="admin-section-heading">
             <DocumentReviewPanel />
           </TabsContent>
 
           {/* Support / Contact Submissions Tab */}
-          <TabsContent value="support">
+          <TabsContent value="support" aria-labelledby="admin-section-heading">
             <ContactSubmissionsPanel />
           </TabsContent>
 
-          <TabsContent value="referrals">
+          <TabsContent value="referrals" aria-labelledby="admin-section-heading">
             <ReferralAnalyticsPanel />
           </TabsContent>
 
-          <TabsContent value="push">
+          <TabsContent value="push" aria-labelledby="admin-section-heading">
             <PushAnalyticsPanel />
           </TabsContent>
 
           {/* Team Management Tab */}
-          {isOwnerAdmin ? <TabsContent value="team">
+          {isOwnerAdmin ? <TabsContent value="team" aria-labelledby="admin-section-heading">
             <TeamManagementPanel />
           </TabsContent> : null}
 
           {/* Audit Log Tab */}
-          <TabsContent value="audit">
+          <TabsContent value="audit" aria-labelledby="admin-section-heading">
             <AuditLogPanel />
           </TabsContent>
 
           {/* Partner Revenue Split Tab */}
-          {isOwnerAdmin ? <TabsContent value="partner">
+          {isOwnerAdmin ? <TabsContent value="partner" aria-labelledby="admin-section-heading">
             <PartnerSplitPanel />
           </TabsContent> : null}
 
           {/* Social Media Tab */}
-          <TabsContent value="social-media">
+          <TabsContent value="social-media" aria-labelledby="admin-section-heading">
             <AdminSocialMedia />
           </TabsContent>
 
-          <TabsContent value="legal">
+          {isOwnerAdmin ? <TabsContent value="legal" aria-labelledby="admin-section-heading">
             <AdminTermsManagement />
-          </TabsContent>
+          </TabsContent> : null}
 
-          {user?.adminRole === "super_admin" ? <TabsContent value="customers-pilot">
+          {user?.adminRole === "super_admin" ? <TabsContent value="customers-pilot" aria-labelledby="admin-section-heading">
             <CustomersPilotHealthPanel />
           </TabsContent> : null}
 
           {/* Platform Settings Tab */}
-          <TabsContent value="settings">
+          <TabsContent value="settings" aria-labelledby="admin-section-heading">
             <PlatformSettingsPanel />
           </TabsContent>
+          </main>
         </Tabs>
       </div>
     </div>
