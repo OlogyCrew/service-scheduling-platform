@@ -1,7 +1,7 @@
 import { eq, and, gt } from "drizzle-orm";
 import { getDb } from "./db/connection";
 import { twoFactorCodes, trustedDevices, users } from "../drizzle/schema";
-import { ENV } from "./_core/env";
+import { EmailProvider } from "./notifications/providers/email";
 import crypto from "crypto";
 
 /**
@@ -63,11 +63,6 @@ export async function verifyTwoFactorCode(userId: number, code: string): Promise
  * Send the 2FA code via email using SendGrid.
  */
 export async function sendTwoFactorEmail(email: string, code: string, name?: string): Promise<boolean> {
-  if (!ENV.sendgridApiKey) {
-    console.error("[2FA] SendGrid API key not configured");
-    return false;
-  }
-
   const greeting = name ? `Hi ${name}` : "Hi";
   const subject = `${code} is your OlogyCrew verification code`;
   const htmlBody = `
@@ -93,28 +88,18 @@ export async function sendTwoFactorEmail(email: string, code: string, name?: str
   `;
 
   try {
-    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${ENV.sendgridApiKey}`,
-      },
-      body: JSON.stringify({
-        personalizations: [{ to: [{ email }] }],
-        from: { email: "security@ologycrew.com", name: "OlogyCrew Security" },
-        subject,
-        content: [
-          { type: "text/plain", value: `${greeting}, your OlogyCrew verification code is: ${code}. This code expires in 10 minutes.` },
-          { type: "text/html", value: htmlBody },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      console.error("[2FA] SendGrid error:", response.status, await response.text());
-      return false;
+    const sent = await EmailProvider.sendRaw(
+      email,
+      subject,
+      htmlBody,
+      `${greeting}, your OlogyCrew verification code is: ${code}. This code expires in 10 minutes.`,
+      "noreply",
+      { purpose: "security" },
+    );
+    if (!sent) {
+      console.error("[2FA] Failed to send email");
     }
-    return true;
+    return sent;
   } catch (e) {
     console.error("[2FA] Failed to send email:", e);
     return false;

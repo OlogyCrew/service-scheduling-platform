@@ -120,7 +120,14 @@ export async function deliverTermsUpdate(version: TermsVersion, retryFailedOnly 
       }
 
       const email = buildTermsUpdateEmail(version, { firstName: user.firstName, name: user.name, email: user.email });
-      const sent = await EmailProvider.sendRaw(user.email, email.subject, email.html, email.text, "info");
+      const sent = await EmailProvider.sendRaw(
+        user.email,
+        email.subject,
+        email.html,
+        email.text,
+        "info",
+        { purpose: "legal", userId: user.id },
+      );
       await markTermsEmailDelivery(notice.id, sent
         ? { status: "sent" }
         : { status: "failed", reason: "Email provider rejected or could not deliver the request" });

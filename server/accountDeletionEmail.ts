@@ -1,23 +1,16 @@
-import { ENV } from "./_core/env";
+import { EmailProvider } from "./notifications/providers/email";
 
 const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663275372790/QD7eHrqop9F5cN2Q4sYGpD/logo-navbar_38427c60.png";
 const SITE_URL = "https://www.ologycrew.com";
 
 /**
  * Sends a confirmation email when a user deletes their account.
- * Uses SendGrid directly since the user's notification preferences
- * have already been cleared by the time this runs.
+ * This essential security email bypasses cleared notification preferences.
  */
 export async function sendAccountDeletionEmail(
   email: string,
   userName: string
 ): Promise<boolean> {
-  const apiKey = ENV.sendgridApiKey;
-  if (!apiKey) {
-    console.warn("[AccountDeletion] No SendGrid API key, skipping email");
-    return false;
-  }
-
   const htmlBody = `
 <!DOCTYPE html>
 <html>
@@ -48,38 +41,25 @@ export async function sendAccountDeletionEmail(
     <p>&copy; ${new Date().getFullYear()} OlogyCrew. All rights reserved.</p>
     <p><a href="${SITE_URL}" style="color: #6b7280; text-decoration: underline;">Visit OlogyCrew</a></p>
   </div>
-</body>
+  </body>
 </html>`.trim();
 
   try {
-    const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        personalizations: [{ to: [{ email }] }],
-        from: { email: "garychisolm30@gmail.com", name: "OlogyCrew" },
-        subject: "Your OlogyCrew Account Has Been Deleted",
-        content: [
-          {
-            type: "text/plain",
-            value: `Hi ${userName}, your OlogyCrew account has been deleted. Your personal information has been anonymized and your profile is no longer visible. If this was done in error, contact support@ologycrew.com.`,
-          },
-          { type: "text/html", value: htmlBody },
-        ],
-      }),
-    });
+    const sent = await EmailProvider.sendRaw(
+      email,
+      "Your OlogyCrew Account Has Been Deleted",
+      htmlBody,
+      `Hi ${userName}, your OlogyCrew account has been deleted. Your personal information has been anonymized and your profile is no longer visible. If this was done in error, contact support@ologycrew.com.`,
+      "noreply",
+      { purpose: "security" },
+    );
 
-    if (res.ok) {
+    if (sent) {
       console.log(`[AccountDeletion] Confirmation email sent to ${email}`);
       return true;
-    } else {
-      const err = await res.text();
-      console.error(`[AccountDeletion] SendGrid error: ${res.status} ${err}`);
-      return false;
     }
+    console.error("[AccountDeletion] Email provider rejected or could not deliver the request");
+    return false;
   } catch (e: any) {
     console.error(`[AccountDeletion] Failed to send email: ${e.message}`);
     return false;

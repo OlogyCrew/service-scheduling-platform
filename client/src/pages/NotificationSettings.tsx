@@ -182,7 +182,7 @@ export default function NotificationSettings() {
                     <div>
                       <Label className="text-sm font-medium">Email Notifications</Label>
                       <p className="text-xs text-muted-foreground">
-                        Receive notifications via email
+                        Receive optional notifications via email
                       </p>
                     </div>
                   </div>
@@ -349,7 +349,7 @@ export default function NotificationSettings() {
 
             {/* Info note */}
             <p className="text-xs text-muted-foreground text-center">
-              You can also unsubscribe from emails using the link at the bottom of any email we send you.
+              You can also unsubscribe from optional emails using the link at the bottom of any email we send you. Security, account-access, requested support and required legal notices may still be sent.
             </p>
           </div>
         )}

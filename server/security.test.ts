@@ -143,6 +143,12 @@ describe("Security: Unsubscribe tokens use crypto.randomBytes", () => {
     const emailCode = await import("fs").then(fs => 
       fs.readFileSync("./server/notifications/providers/email.ts", "utf-8")
     );
-    expect(emailCode).toContain("crypto.randomBytes(32)");
+    const storageCode = await import("fs").then(fs =>
+      fs.readFileSync("./server/db/notifications.ts", "utf-8")
+    );
+    expect(emailCode).toContain("db.ensureNotificationUnsubscribeToken");
+    expect(storageCode).toContain('import { randomBytes } from "node:crypto"');
+    expect(storageCode).toContain('randomBytes(32).toString("hex")');
+    expect(storageCode).not.toContain("Math.random(");
   });
 });

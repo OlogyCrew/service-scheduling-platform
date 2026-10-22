@@ -168,7 +168,7 @@ router.post("/api/auth/register", async (req: Request, res: Response) => {
         const verifyUrl = `${origin}${appendAuthReturnPath(`/verify-email?token=${reactivationToken}`, returnTo)}`;
         await EmailProvider.sendRaw(email.toLowerCase(), "Verify your OlogyCrew account",
           `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;"><h2>Welcome back to OlogyCrew!</h2><p>Hi ${firstName},</p><p>Your account has been reactivated. Please verify your email.</p><a href="${verifyUrl}" style="display:inline-block;background:#2563eb;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;margin:16px 0;">Verify Email</a><p style="color:#666;font-size:14px;">Link expires in 24 hours.</p></div>`,
-          `Welcome back! Verify: ${verifyUrl}`, 'info');
+          `Welcome back! Verify: ${verifyUrl}`, 'info', { purpose: 'security' });
       }
       const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || "", expiresInMs: ONE_YEAR_MS });
       const cookieOptions = getSessionCookieOptions(req);
@@ -217,7 +217,8 @@ router.post("/api/auth/register", async (req: Request, res: Response) => {
         </div>
       `,
       `Welcome to OlogyCrew! Verify your email: ${verifyUrl}`,
-      'info'
+      'info',
+      { purpose: 'security' }
     );
 
     // Create session and set cookie (user can use the app while unverified, but with limited access)
@@ -705,7 +706,8 @@ router.post("/api/auth/resend-verification", async (req: Request, res: Response)
         </div>
       `,
       `Verify your OlogyCrew email: ${verifyUrl}`,
-      'noreply'
+      'noreply',
+      { purpose: 'security' }
     );
 
     return res.json({ success: true, message: "Verification email sent." });
@@ -816,7 +818,8 @@ router.post("/api/auth/forgot-password", async (req: Request, res: Response) => 
         </div>
       `,
       `Reset your OlogyCrew password: ${resetUrl}`,
-      'noreply'
+      'noreply',
+      { purpose: 'security' }
     );
     console.log(`[Auth] Password reset email result: ${emailSent}`);
 

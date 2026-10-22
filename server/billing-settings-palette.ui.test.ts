@@ -97,6 +97,8 @@ describe("billing and settings visual surfaces", () => {
     expect(screen.getByRole("switch", { name: "Allow provider relationship messages" })).toHaveAttribute("data-state", "unchecked");
     expect(screen.getByText("Marketing & Promotions")).toBeVisible();
     expect(screen.getAllByText("Coming Soon")).toHaveLength(2);
+    expect(screen.getByText("Receive optional notifications via email")).toBeVisible();
+    expect(screen.getByText(/Security, account-access, requested support and required legal notices may still be sent/)).toBeVisible();
     expect(container.querySelectorAll('[data-slot="switch"]:disabled').length).toBeGreaterThan(0);
     expect(mocks.mutation).not.toHaveBeenCalled();
   });

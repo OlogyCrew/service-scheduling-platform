@@ -185,6 +185,8 @@ export {
   getNotificationsByType,
   createNotification,
   getNotificationPreferences,
+  getEmailNotificationPreferences,
+  ensureNotificationUnsubscribeToken,
   upsertNotificationPreferences,
   deleteNotification,
   clearAllNotifications,

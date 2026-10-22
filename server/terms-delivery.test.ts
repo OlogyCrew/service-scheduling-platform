@@ -57,7 +57,14 @@ describe("Terms update delivery", () => {
     expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ notificationType: "terms_updated", actionUrl: "/terms?version=2026-10-15" }));
     expect(termsDb.markTermsInAppNotified).toHaveBeenCalledTimes(2);
     expect(sendRaw).toHaveBeenCalledTimes(1);
-    expect(sendRaw).toHaveBeenCalledWith("gary@example.com", expect.stringContaining("Terms of Use"), expect.stringContaining("OlogyCrew"), expect.stringContaining("October 15, 2026"), "info");
+    expect(sendRaw).toHaveBeenCalledWith(
+      "gary@example.com",
+      expect.stringContaining("Terms of Use"),
+      expect.stringContaining("OlogyCrew"),
+      expect.stringContaining("October 15, 2026"),
+      "info",
+      { purpose: "legal", userId: 1 },
+    );
     expect(termsDb.markTermsEmailDelivery).toHaveBeenCalledWith(11, { status: "sent" });
     expect(termsDb.markTermsEmailDelivery).toHaveBeenCalledWith(12, { status: "skipped", reason: "No verified email address" });
     expect(summary.sent).toBe(1);

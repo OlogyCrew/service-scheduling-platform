@@ -1,4 +1,5 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
 import {
   notifications,
   notificationPreferences,
@@ -92,6 +93,30 @@ export async function getNotificationPreferences(userId: number): Promise<Notifi
     .where(eq(notificationPreferences.userId, userId))
     .limit(1);
   return rows[0] || null;
+}
+
+/** Delivery must distinguish an unavailable store from a confirmed missing row. */
+export async function getEmailNotificationPreferences(userId: number): Promise<NotificationPreference | null> {
+  const database = await getDb();
+  if (!database) throw new Error("Database not available");
+  const rows = await database.select().from(notificationPreferences)
+    .where(eq(notificationPreferences.userId, userId)).limit(1);
+  return rows[0] || null;
+}
+
+/** Concurrent emails must not replace a token already delivered to a user. */
+export async function ensureNotificationUnsubscribeToken(userId: number): Promise<string> {
+  if (!Number.isInteger(userId) || userId <= 0) throw new Error("Invalid unsubscribe user");
+  const database = await getDb();
+  if (!database) throw new Error("Database not available");
+  const token = randomBytes(32).toString("hex");
+  await database.insert(notificationPreferences).values({ userId, unsubscribeToken: token })
+    .onDuplicateKeyUpdate({ set: {
+      unsubscribeToken: sql`COALESCE(NULLIF(${notificationPreferences.unsubscribeToken}, ''), ${token})`,
+    } });
+  const preferences = await getEmailNotificationPreferences(userId);
+  if (!preferences?.unsubscribeToken) throw new Error("Unable to persist unsubscribe token");
+  return preferences.unsubscribeToken;
 }
 
 export async function upsertNotificationPreferences(

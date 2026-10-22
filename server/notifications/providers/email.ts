@@ -2,8 +2,8 @@ import { Notification, NotificationProvider } from "../types";
 import { getTemplate } from "../templates";
 import { ENV } from "../../_core/env";
 import * as db from "../../db";
-import crypto from "crypto";
 import { OLOGYCREW_PUBLIC_ORIGIN } from "../../../shared/publicUrls";
+import { getEmailRule, maySendOptionalEmail, type RawEmailOptions } from "../emailPolicy";
 
 // Site logo used in the navbar — same branding in emails
 const SITE_LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663275372790/QD7eHrqop9F5cN2Q4sYGpD/logo-navbar_38427c60.png";
@@ -55,29 +55,6 @@ export class EmailProvider implements NotificationProvider {
     return channel === "email";
   }
 
-  /**
-   * Ensure the user has an unsubscribe token.
-   * If none exists, create one and persist it.
-   * For non-system customers (userId=0), skip token generation.
-   */
-  private async ensureUnsubscribeToken(userId: number): Promise<string> {
-    if (!userId || userId <= 0) {
-      // Non-system customer, no unsubscribe token possible
-      return "";
-    }
-    try {
-      const prefs = await db.getNotificationPreferences(userId);
-      if (prefs?.unsubscribeToken) return prefs.unsubscribeToken;
-
-      const token = crypto.randomBytes(32).toString("hex");
-      await db.upsertNotificationPreferences(userId, { unsubscribeToken: token });
-      return token;
-    } catch (err) {
-      console.warn("[EmailProvider] Failed to generate unsubscribe token:", err);
-      return "";
-    }
-  }
-
   async send(notification: Notification): Promise<boolean> {
     if (!notification.recipient.email) {
       console.warn("[EmailProvider] No email address provided for recipient");
@@ -89,21 +66,33 @@ export class EmailProvider implements NotificationProvider {
       return false;
     }
 
-    // Check user preferences before sending
-    try {
-      const prefs = await db.getNotificationPreferences(notification.recipient.userId);
-      if (prefs && !prefs.emailEnabled) {
-        console.log(`[EmailProvider] Email disabled for user ${notification.recipient.userId}, skipping`);
+    const rule = getEmailRule(notification.type);
+    if (!rule) return false; // Unknown/new types do not inherit permission.
+    const userId = notification.recipient.userId;
+    // Existing provider-created invoices can address a non-account customer.
+    // This narrow transactional exception never permits reminders/promotions.
+    const externalInvoice = notification.type === "invoice_sent" && userId === 0;
+    let unsubscribeToken = "";
+    if (!rule.essential && !externalInvoice) {
+      if (!Number.isInteger(userId) || userId <= 0) return false;
+      try {
+        const prefs = await db.getEmailNotificationPreferences(userId);
+        if (!maySendOptionalEmail(notification.type, prefs)) return false;
+        unsubscribeToken = prefs?.unsubscribeToken || await db.ensureNotificationUnsubscribeToken(userId);
+        if (!unsubscribeToken) return false;
+        // Token creation may race a preference change: do not reset or ignore it.
+        if (!prefs?.unsubscribeToken && !maySendOptionalEmail(notification.type, await db.getEmailNotificationPreferences(userId))) return false;
+      } catch {
+        console.warn("[EmailProvider] Optional email suppressed: preferences or unsubscribe unavailable");
         return false;
       }
-    } catch {
-      // If preferences check fails, send anyway (fail-open)
+    } else if (Number.isInteger(userId) && userId > 0) {
+      try { unsubscribeToken = await db.ensureNotificationUnsubscribeToken(userId); }
+      catch { /* Necessary requested-support email retains a settings link. */ }
     }
 
-    const template = getTemplate(notification.type, notification.data);
-
-    // Generate unsubscribe token for this user
-    const unsubscribeToken = await this.ensureUnsubscribeToken(notification.recipient.userId);
+    const unsubscribeUrl = EmailProvider.unsubscribeUrl(unsubscribeToken);
+    const template = getTemplate(notification.type, { ...notification.data, unsubscribeUrl });
 
     try {
       const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
@@ -118,10 +107,11 @@ export class EmailProvider implements NotificationProvider {
           }],
           from: getSenderForType(notification.type),
           subject: template.subject,
+          ...(!rule.essential ? { headers: { "List-Unsubscribe": `<${unsubscribeUrl}>` } } : {}),
           content: [
             {
               type: "text/plain",
-              value: template.body,
+              value: EmailProvider.withPreferenceText(template.body, unsubscribeUrl),
             },
             {
               type: "text/html",
@@ -149,16 +139,25 @@ export class EmailProvider implements NotificationProvider {
   }
 
   /**
-   * Send a raw email directly via SendGrid (no user preferences check).
-   * Used for password resets, verification emails, etc.
+   * Explicit necessary account/security, legal, or requested-support notice.
+   * Unclassified callers fail closed. This is not a campaign delivery bypass.
    * @param senderType - which sender address to use: 'noreply' | 'info' | 'support'
    */
-  static async sendRaw(to: string, subject: string, htmlBody: string, textBody: string, senderType: 'noreply' | 'info' | 'support' = 'noreply'): Promise<boolean> {
+  static async sendRaw(to: string, subject: string, htmlBody: string, textBody: string, senderType: 'noreply' | 'info' | 'support' = 'noreply', options?: RawEmailOptions): Promise<boolean> {
+    if (!options || !["security", "legal", "support"].includes(options.purpose) || !to) return false;
     if (!ENV.sendgridApiKey) {
       console.warn("[EmailProvider] SendGrid API key not configured");
       return false;
     }
 
+    let token = "";
+    if (Number.isInteger(options.userId) && options.userId! > 0) {
+      try { token = await db.ensureNotificationUnsubscribeToken(options.userId!); }
+      catch { /* Necessary notices must not depend on optional preferences. */ }
+    }
+    const unsubscribeUrl = EmailProvider.unsubscribeUrl(token);
+    const footer = `<div style="padding:16px;text-align:center;font-size:12px;color:#53665d"><a href="${unsubscribeUrl}">Unsubscribe from optional emails</a> · <a href="${getSiteUrl()}/notification-settings">Manage preferences</a><p>Security, account-access, requested support and required legal notices may still be sent.</p></div>`;
+    const htmlWithFooter = /<\/body>/i.test(htmlBody) ? htmlBody.replace(/<\/body>/i, `${footer}</body>`) : `${htmlBody}${footer}`;
     try {
       const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
         method: "POST",
@@ -173,8 +172,8 @@ export class EmailProvider implements NotificationProvider {
           from: EMAIL_SENDERS[senderType],
           subject,
           content: [
-            { type: "text/plain", value: textBody },
-            { type: "text/html", value: htmlBody },
+            { type: "text/plain", value: EmailProvider.withPreferenceText(textBody, unsubscribeUrl) },
+            { type: "text/html", value: htmlWithFooter },
           ],
         }),
       });
@@ -190,6 +189,14 @@ export class EmailProvider implements NotificationProvider {
       console.error("[EmailProvider.sendRaw] Error:", error);
       return false;
     }
+  }
+
+  private static unsubscribeUrl(token: string): string {
+    return token ? `${getSiteUrl()}/unsubscribe/${encodeURIComponent(token)}` : `${getSiteUrl()}/notification-settings`;
+  }
+
+  private static withPreferenceText(body: string, url: string): string {
+    return `${body}\n\nUnsubscribe from optional emails: ${url}\nManage preferences: ${getSiteUrl()}/notification-settings\nSecurity, account-access, requested support and required legal notices may still be sent.`;
   }
 
   private formatEmailHTML(body: string, data: any): string {
@@ -208,9 +215,7 @@ export class EmailProvider implements NotificationProvider {
 
     // Build absolute unsubscribe URL
     // For non-system customers (no token), link to notification-settings page
-    const unsubscribeUrl = data.unsubscribeToken
-      ? `${siteUrl}/unsubscribe/${data.unsubscribeToken}`
-      : `${siteUrl}/notification-settings`;
+    const unsubscribeUrl = EmailProvider.unsubscribeUrl(data.unsubscribeToken || "");
 
     return `
 <!DOCTYPE html>
@@ -234,6 +239,7 @@ export class EmailProvider implements NotificationProvider {
       &nbsp;&middot;&nbsp;
       <a href="${siteUrl}/notification-settings" style="color: #6b7280; text-decoration: underline;">Manage preferences</a>
     </p>
+    <p>Security, account-access, requested support and required legal notices may still be sent.</p>
   </div>
 </body>
 </html>

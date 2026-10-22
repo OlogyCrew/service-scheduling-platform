@@ -245,6 +245,18 @@ describe("Phase 12: SMS, Notification Preferences, Unsubscribe", () => {
       expect(prefs!.marketingEmail).toBe(false);
     });
 
+    it("keeps concurrent email tokens stable without undoing unsubscribe choices", async () => {
+      const tokens = await Promise.all([
+        db.ensureNotificationUnsubscribeToken(providerUserId),
+        db.ensureNotificationUnsubscribeToken(providerUserId),
+      ]);
+      expect(tokens).toEqual([unsubToken, unsubToken]);
+      const prefs = await db.getEmailNotificationPreferences(providerUserId);
+      expect(prefs!.emailEnabled).toBe(false);
+      expect(prefs!.bookingEmail).toBe(false);
+      expect(prefs!.marketingEmail).toBe(false);
+    });
+
     it("should fail unsubscribe with invalid token", async () => {
       const success = await db.unsubscribeAllEmail("nonexistent-token");
       expect(success).toBe(false);
