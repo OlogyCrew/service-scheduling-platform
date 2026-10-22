@@ -7,6 +7,7 @@ import {
   markTermsInAppNotified,
 } from "./db/terms";
 import { EmailProvider } from "./notifications/providers/email";
+import { AI_DISCOVERY_LEGAL_RELEASE } from "../shared/legalPolicyRelease";
 
 const SITE_URL = "https://www.ologycrew.com";
 const SITE_LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663275372790/QD7eHrqop9F5cN2Q4sYGpD/logo-navbar_38427c60.png";
@@ -29,6 +30,9 @@ export function buildTermsUpdateEmail(version: TermsVersion, recipient: { firstN
   const firstName = recipient.firstName?.trim() || recipient.name?.trim().split(/\s+/)[0] || "there";
   const effectiveDate = formatDate(version.effectiveAt);
   const termsUrl = `${SITE_URL}/terms?version=${encodeURIComponent(version.version)}`;
+  const coordinatedPrivacy = version.version === AI_DISCOVERY_LEGAL_RELEASE.version;
+  const privacyUrl = coordinatedPrivacy ? `${SITE_URL}/privacy?version=${AI_DISCOVERY_LEGAL_RELEASE.privacyVersion}` : `${SITE_URL}/privacy`;
+  const documentNames = coordinatedPrivacy ? "OlogyCrew Terms of Use and Privacy Policy" : "OlogyCrew Terms of Use";
   const arbitrationNotice = version.materialArbitrationChanges && version.arbitrationSection && version.optOutDeadline
     ? `\n\nThe revised Terms also include material updates to the dispute-resolution provisions, including the Arbitration Agreement. If you want to continue using OlogyCrew without accepting those material changes, you may follow the opt-out instructions in Section ${version.arbitrationSection} by ${formatDate(version.optOutDeadline)}.`
     : "";
@@ -36,16 +40,16 @@ export function buildTermsUpdateEmail(version: TermsVersion, recipient: { firstN
     ? "Please review the updated Terms and use the acknowledgment shown in your OlogyCrew account."
     : `By continuing to access, use, or subscribe to OlogyCrew on or after ${effectiveDate}, you acknowledge and accept the updated Terms of Use.`;
 
-  const subject = "Important updates to the OlogyCrew Terms of Use";
+  const subject = `Important updates to the ${documentNames}`;
   const text = `Hello ${firstName},
 
-We are updating the OlogyCrew Terms of Use to make our terms clearer and to reflect updates to the platform, our services, and how we work with customers and service providers.
+We are updating the ${documentNames} to make our terms clearer and to reflect updates to the platform, our services, and how we work with customers and service providers.
 
 ${version.summary}
 
-Review the updated Terms of Use: ${termsUrl}
+Review the updated Terms of Use: ${termsUrl}${coordinatedPrivacy ? `\nReview the updated Privacy Policy: ${privacyUrl}` : ""}
 
-The updated Terms will take effect on ${effectiveDate} for existing OlogyCrew users. ${acceptanceText}${arbitrationNotice}
+The updated Terms will take effect on ${effectiveDate} for existing OlogyCrew users. ${acceptanceText}${arbitrationNotice}${coordinatedPrivacy ? `\n\nThe revised Privacy Policy will also take effect on ${effectiveDate}. Please review its disclosures and your available privacy choices.` : ""}
 
 We encourage you to read the updated Terms carefully. If you have questions, contact us at ${version.contactEmail}.
 
@@ -55,7 +59,7 @@ The OlogyCrew Team
 
 This message was sent to ${recipient.email} because you have an OlogyCrew account.
 Terms of Use: ${termsUrl}
-Privacy Policy: ${SITE_URL}/privacy
+Privacy Policy: ${privacyUrl}
 Contact Us: ${SITE_URL}/help
 
 OlogyCrew LLC
@@ -71,17 +75,19 @@ ${version.companyAddress}`;
     </div>
     <div style="background:#fff;border:1px solid #dbe5ef;border-top:0;padding:32px;border-radius:0 0 18px 18px">
       <p>Hello ${escapeHtml(firstName)},</p>
-      <p>We are updating the <strong>OlogyCrew Terms of Use</strong> to make our terms clearer and to reflect updates to the platform, our services, and how we work with customers and service providers.</p>
+      <p>We are updating the <strong>${documentNames}</strong> to make our terms clearer and to reflect updates to the platform, our services, and how we work with customers and service providers.</p>
       <div style="background:#f1f7fb;border-left:4px solid #1775a5;padding:14px 16px;margin:22px 0">${escapeHtml(version.summary)}</div>
       <p><a href="${termsUrl}" style="display:inline-block;background:#176f9e;color:#fff;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:10px">Review the updated Terms of Use</a></p>
+      ${coordinatedPrivacy ? `<p><a href="${privacyUrl}" style="color:#176f9e;font-weight:700">Review the updated Privacy Policy</a></p>` : ""}
       <p>The updated Terms will take effect on <strong>${effectiveDate}</strong> for existing OlogyCrew users. ${escapeHtml(acceptanceText)}</p>
+      ${coordinatedPrivacy ? `<p>The revised Privacy Policy will also take effect on <strong>${effectiveDate}</strong>. Please review its disclosures and your available privacy choices.</p>` : ""}
       ${version.materialArbitrationChanges && version.arbitrationSection && version.optOutDeadline ? `<p><strong>Dispute-resolution update:</strong> The revised Terms include material updates to the Arbitration Agreement. You may follow the opt-out instructions in Section ${escapeHtml(version.arbitrationSection)} by ${formatDate(version.optOutDeadline)}.</p>` : ""}
       <p>We encourage you to read the updated Terms carefully. If you have questions, contact us at <a href="mailto:${escapeHtml(version.contactEmail)}" style="color:#176f9e">${escapeHtml(version.contactEmail)}</a>.</p>
       <p>Thank you for being part of OlogyCrew.<br><strong>The OlogyCrew Team</strong></p>
     </div>
     <div style="padding:20px 12px;text-align:center;color:#607086;font-size:12px">
       <p>This message was sent to ${escapeHtml(recipient.email)} because you have an OlogyCrew account.</p>
-      <p><a href="${termsUrl}" style="color:#52677e">Terms of Use</a> &middot; <a href="${SITE_URL}/privacy" style="color:#52677e">Privacy Policy</a> &middot; <a href="${SITE_URL}/help" style="color:#52677e">Contact Us</a></p>
+      <p><a href="${termsUrl}" style="color:#52677e">Terms of Use</a> &middot; <a href="${privacyUrl}" style="color:#52677e">Privacy Policy</a> &middot; <a href="${SITE_URL}/help" style="color:#52677e">Contact Us</a></p>
       <p>OlogyCrew LLC<br>${escapeHtml(version.companyAddress)}</p>
     </div>
   </div>
@@ -94,6 +100,7 @@ export async function deliverTermsUpdate(version: TermsVersion, retryFailedOnly 
   const recipients = await getTermsDeliveryRecipients(version.id, retryFailedOnly);
   const effectiveDate = formatDate(version.effectiveAt);
   const actionUrl = `/terms?version=${encodeURIComponent(version.version)}`;
+  const coordinatedPrivacy = version.version === AI_DISCOVERY_LEGAL_RELEASE.version;
 
   for (let offset = 0; offset < recipients.length; offset += 10) {
     const batch = recipients.slice(offset, offset + 10);
@@ -103,8 +110,8 @@ export async function deliverTermsUpdate(version: TermsVersion, retryFailedOnly 
           await createNotification({
             userId: user.id,
             notificationType: "terms_updated",
-            title: "OlogyCrew Terms of Use updated",
-            message: `Review the updated Terms of Use before they take effect on ${effectiveDate}.`,
+            title: coordinatedPrivacy ? "OlogyCrew Terms of Use and Privacy Policy updated" : "OlogyCrew Terms of Use updated",
+            message: `Review the updated ${coordinatedPrivacy ? "Terms of Use and Privacy Policy" : "Terms of Use"} before they take effect on ${effectiveDate}.`,
             actionUrl,
           });
           await markTermsInAppNotified(notice.id);

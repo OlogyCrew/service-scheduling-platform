@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useSearch } from "wouter";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../server/routers";
+import { AI_DISCOVERY_LEGAL_RELEASE } from "../../../shared/legalPolicyRelease";
 
 type ManagedTermsVersion = NonNullable<inferRouterOutputs<AppRouter>["terms"]["current"]>;
 
@@ -273,7 +274,9 @@ function ManagedTermsOfService({ version }: { version: ManagedTermsVersion }) {
     },
     onError: (error) => toast.error("Could not record your response", { description: error.message }),
   });
-  const effectiveDate = new Date(version.effectiveAt).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+  const coordinatedPrivacy = version.version === AI_DISCOVERY_LEGAL_RELEASE.version;
+  const upcoming = coordinatedPrivacy && version.status === "published" && Date.now() < new Date(version.effectiveAt).getTime();
+  const effectiveDate = new Date(version.effectiveAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", ...(coordinatedPrivacy ? { timeZone: AI_DISCOVERY_LEGAL_RELEASE.timeZone } : {}) });
   const matchingNoticeId = pendingNotice?.version.version === version.version ? pendingNotice.noticeId : null;
 
   return (
@@ -285,6 +288,15 @@ function ManagedTermsOfService({ version }: { version: ManagedTermsVersion }) {
           <div><p className="text-sm font-semibold text-blue-950">Version {version.version}</p><p className="mt-1 text-sm text-blue-800">Effective {effectiveDate}{version.status === "superseded" ? " · Prior version" : ""}</p></div>
           {matchingNoticeId ? <Button disabled={acknowledge.isPending} onClick={() => acknowledge.mutate({ noticeId: matchingNoticeId })}>{acknowledge.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}{version.acceptanceMode === "explicit" ? "Accept updated Terms" : "Acknowledge update"}</Button> : null}
         </div>
+        {coordinatedPrivacy ? <div className="mt-4 rounded-xl border bg-white p-4 text-sm leading-6 text-slate-700" role="note">
+          <p className="font-semibold">{upcoming ? "Upcoming Terms" : version.status === "published" ? "Current Terms" : "Prior Terms"}</p>
+          <p>Effective {effectiveDate} at 12:00 AM Eastern Time. {upcoming ? "The June 24, 2026 Terms remain effective until then." : ""}</p>
+          {version.publishedAt ? <p>Published {new Date(version.publishedAt).toLocaleDateString("en-US", {month:"long",day:"numeric",year:"numeric",timeZone:AI_DISCOVERY_LEGAL_RELEASE.timeZone})}.</p> : null}
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+            {upcoming ? <a className="text-primary underline" href="/terms?version=2026-06-24">Read the currently effective Terms</a> : null}
+            <a className="text-primary underline" href={`/privacy?version=${AI_DISCOVERY_LEGAL_RELEASE.privacyVersion}`}>Review the revised Privacy Policy</a>
+          </div>
+        </div> : null}
         <p className="mt-6 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><strong>What changed:</strong> {version.summary}</p>
         {version.materialArbitrationChanges ? <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-950"><strong>Arbitration Agreement update:</strong> Review Section {version.arbitrationSection}.{version.optOutDeadline ? ` The stated opt-out deadline is ${new Date(version.optOutDeadline).toLocaleDateString()}.` : ""}</div> : null}
         <div className="prose prose-neutral mt-8 max-w-none dark:prose-invert"><Streamdown>{version.content}</Streamdown></div>
@@ -300,5 +312,5 @@ function TermsVersionHistory({ currentVersion }: { currentVersion: string }) {
   const priorVersions = history.filter((item) => item.version !== currentVersion);
   if (priorVersions.length === 0) return null;
 
-  return <section className="mt-10 border-t pt-6" aria-labelledby="terms-history-heading"><h2 id="terms-history-heading" className="text-lg font-semibold">Prior Terms versions</h2><div className="mt-3 flex flex-wrap gap-2">{priorVersions.map((item) => <a key={item.version} href={`/terms?version=${encodeURIComponent(item.version)}`} className="rounded-full border bg-white px-3 py-1.5 text-sm text-slate-600 hover:border-blue-300 hover:text-[#176f9e]">{item.version}</a>)}</div></section>;
+  return <section className="mt-10 border-t pt-6" aria-labelledby="terms-history-heading"><h2 id="terms-history-heading" className="text-lg font-semibold">Other Terms versions</h2><div className="mt-3 flex flex-wrap gap-2">{priorVersions.map((item) => <a key={item.version} href={`/terms?version=${encodeURIComponent(item.version)}`} className="rounded-full border bg-white px-3 py-1.5 text-sm text-slate-600 hover:border-blue-300 hover:text-[#176f9e]">{item.version}</a>)}</div></section>;
 }
