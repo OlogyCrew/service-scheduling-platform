@@ -48,6 +48,12 @@ describe("admin grouped navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Admin sections — Overview" }));
     const dialog = screen.getByRole("dialog", { name: "Admin sections" });
     expect(within(dialog).getAllByRole("tab")).toHaveLength(17);
+    const header = within(dialog).getByRole("heading", { name: "Admin sections" }).closest('[data-slot="sheet-header"]');
+    expect(header).not.toBeNull();
+    expect(within(header as HTMLElement).getByText("Choose a workspace.")).toBeVisible();
+    const list = within(dialog).getByRole("tablist");
+    expect(header?.nextElementSibling).toBe(list);
+    expect(within(dialog).getByRole("button", { name: "Close" })).toBeVisible();
     const ids = Array.from(document.querySelectorAll('[role="tab"]')).map(el => el.id);
     expect(new Set(ids).size).toBe(ids.length);
     choose("Users");

@@ -45,11 +45,13 @@
 .ology-admin :is(button, input, select, a, summary, [role="combobox"]):focus-visible, .ology-admin-drawer :is(button, a):focus-visible { outline: var(--ology-brand-focus); outline-offset: 2px; }
 .ology-admin .ology-admin-health-summary { cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--ology-brand-deep); font-size: 13px; font-weight: 700; padding-block: 4px; }
 .ology-admin-health-details > div { margin-top: 14px; }
-.ology-admin-drawer { width: min(340px, calc(100vw - 24px)); max-width: none; background: var(--ology-brand-surface); color: var(--ology-brand-ink); overflow-y: auto; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+.ology-admin-drawer { width: min(340px, calc(100vw - 24px)); max-width: none; height: 100dvh; max-height: 100dvh; box-sizing: border-box; background: var(--ology-brand-surface); color: var(--ology-brand-ink); overflow: hidden; padding-bottom: 0; }
+.ology-admin-drawer [data-slot="sheet-header"] { flex-shrink: 0; padding-top: max(16px, env(safe-area-inset-top)); padding-right: calc(48px + env(safe-area-inset-right)); padding-bottom: 0; }
 .ology-admin-drawer [data-slot="sheet-title"] { color: var(--ology-brand-deep); }
 .ology-admin-drawer [data-slot="sheet-description"] { color: var(--ology-brand-muted); }
-.ology-admin-drawer .ology-admin-nav-list { padding: 0 14px; }
+.ology-admin-drawer .ology-admin-nav-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 14px max(20px, env(safe-area-inset-bottom)); }
 .ology-admin-drawer .ology-admin-nav-item { min-height: 42px; }
+.ology-admin-drawer > button { top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); }
 .ology-admin-menu-trigger { display: flex; width: 100%; justify-content: flex-start; min-height: 44px; gap: 9px; background: var(--ology-brand-surface); white-space: normal; }
 .ology-admin-menu-trigger strong { margin-left: auto; text-align: right; font-weight: 600; font-size: 12px; }
 .ology-admin-mobile-nav { margin-bottom: 18px; }

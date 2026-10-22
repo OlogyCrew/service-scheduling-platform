@@ -44,4 +44,17 @@ describe("admin navigation rollover and compact overview", () => {
     expect(admin).toContain(".ology-admin-overview-grid { grid-template-columns: 1fr; }");
     expect(admin).not.toMatch(/(?:^|\n)\s*(?:body|:root)\s*\{/);
   });
+  it("keeps the drawer header and section list from shrinking into each other", () => {
+    const admin = source("client/src/pages/admin/AdminWorkspace.css");
+    const header = rule(admin, '.ology-admin-drawer [data-slot="sheet-header"]');
+    const list = rule(admin, ".ology-admin-drawer .ology-admin-nav-list");
+    expect(property(header, "flex-shrink")).toBe("0");
+    expect(property(list, "flex")).toBe("1 1 auto");
+    expect(property(list, "min-height")).toBe("0");
+    expect(property(list, "overflow-y")).toBe("auto");
+    expect(header).toContain("safe-area-inset-top");
+    expect(rule(admin, ".ology-admin-drawer {")).toContain("overflow: hidden");
+    expect(rule(admin, ".ology-admin-drawer {")).toContain("max-height: 100dvh");
+    expect(rule(admin, ".ology-admin-drawer > button")).toContain("safe-area-inset-top");
+  });
 });
