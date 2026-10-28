@@ -67,7 +67,7 @@ describe("Concept 3 public homepage with actual OlogyCrew data", () => {
     render(createElement(PublicHomepageConceptThree));
     expect(screen.getByTestId("shared-header")).toBeVisible();
     expect(screen.getByTestId("shared-header")).toHaveAttribute("data-public", "false");
-    expect(screen.getByRole("heading", { level: 1, name: /good work starts with people/i })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 1, name: /bad work starts with people/i })).toBeVisible();
     expect(document.title).toBe("OlogyCrew — Local work, well done");
   });
 
@@ -97,8 +97,8 @@ describe("Concept 3 public homepage with actual OlogyCrew data", () => {
 
   it("introduces the same two paths quietly on the hero without displacing its people-first search", () => {
     render(createElement(PublicHomepageConceptThree));
-    const hero = screen.getByRole("region", { name: /good work starts with people/i });
-    expect(within(hero).getByRole("heading", { level: 1 })).toHaveTextContent("Good work starts with people.");
+    const hero = screen.getByRole("region", { name: /bad work starts with people/i });
+    expect(within(hero).getByRole("heading", { level: 1 })).toHaveTextContent("Bad work starts with people.");
     const search = within(hero).getByRole("search", { name: "Search local services and professionals" });
     expect(within(search).getByRole("button", { name: "Find your pro" })).toBeVisible();
     const cue = within(hero).getByLabelText("One platform, two clear paths");
@@ -178,7 +178,7 @@ describe("Concept 3 public homepage with actual OlogyCrew data", () => {
     expect(footer).toContain("if (compactPublicHome && !isAuthenticated)");
     expect(preview).toContain("Homepage concept 3 · Supplied demo design");
     expect(html).toContain("<title>OlogyCrew — Local work, well done</title>");
-    expect(html).toContain("Good work starts with people — OlogyCrew");
+    expect(html).toContain("Bad work starts with people — OlogyCrew");
     expect(html).toContain('content="https://ologycrew.com/manus-storage/ologycrew-people-first-social-1200x630_05d25d5b.jpg"');
     expect(html).toContain('<meta property="og:image:width" content="1200" />');
     expect(html).toContain('<meta property="og:image:height" content="630" />');

@@ -65,7 +65,7 @@ export default function PublicHomepageConceptThree({ forcePublicHeader = false }
             <img className="or-hero-img" src={heroImage} alt="Illustrative photograph of a stylist working with a client" fetchPriority="high" />
             <div className="or-hero-content">
               <div className="or-eyebrow">OlogyCrew · Local work, well done</div>
-              <h1 className="or-display" id="public-hero-heading">Good work{" "}<br />starts with <span className="or-serif">people.</span></h1>
+              <h1 className="or-display" id="public-hero-heading">Bad work{" "}<br />starts with <span className="or-serif">people.</span></h1>
               <p className="or-hero-copy">Find the independent professionals behind the work you love. See their services and pricing where available, then book or request a quote directly.</p>
               <form className="or-search" role="search" aria-label="Search local services and professionals" onSubmit={submitSearch}>
                 <Search aria-hidden="true" />
