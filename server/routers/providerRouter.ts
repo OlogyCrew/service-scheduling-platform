@@ -855,6 +855,16 @@ export const providerRouter = router({
       attachmentUrls: z.array(z.string()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const provider = await db.getProviderById(input.providerId);
+      if (!provider || provider.isActive === false || provider.deletedAt) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "This provider is not currently available." });
+      }
+      if (input.serviceId !== undefined) {
+        const service = await db.getServiceById(input.serviceId);
+        if (!service || !service.isActive || service.deletedAt || service.providerId !== input.providerId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "This service is not currently available." });
+        }
+      }
       const result = await db.createQuoteRequest({
         customerId: ctx.user.id,
         providerId: input.providerId,
@@ -943,6 +953,9 @@ export const providerRouter = router({
       const provider = await db.getProviderByUserId(ctx.user.id);
       if (!provider || quote.providerId !== provider.id) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+      }
+      if (provider.isActive === false || provider.deletedAt) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "This provider account is suspended and cannot respond to quotes." });
       }
       if (quote.status !== "pending") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Quote has already been responded to" });

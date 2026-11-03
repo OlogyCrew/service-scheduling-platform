@@ -61,6 +61,13 @@ export const stripeRouter = router({
       const provider = await db.getProviderById(booking.providerId);
       if (!service || !provider) throw new Error("Service or provider not found");
 
+      if (provider.isActive === false || provider.deletedAt) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This provider is not currently accepting bookings or payments through OlogyCrew. No charge was created.",
+        });
+      }
+
       // Demo provider bypass: skip payment entirely for official/demo providers
       if (provider.isOfficial) {
         await db.updateBookingStatus(booking.id, "confirmed", {

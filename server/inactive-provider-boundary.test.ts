@@ -25,6 +25,7 @@ vi.mock("./db", () => ({
 import { providerRouter } from "./routers/providerRouter";
 import { serviceRouter } from "./routers/serviceRouter";
 import { bookingRouter } from "./routers/bookingRouter";
+import { waitlistRouter } from "./routers/waitlistRouter";
 
 const publicContext = { user: null, req: { headers: {} }, res: {} } as unknown as TrpcContext;
 const customerContext = {
@@ -93,8 +94,38 @@ describe("inactive provider public boundary", () => {
     })).rejects.toMatchObject({ code: "NOT_FOUND", message: "Service is not currently available" });
   });
 
+  it("rejects quote requests to inactive providers before creating a quote", async () => {
+    mocks.getProviderById.mockResolvedValue({ id: 7, isActive: false });
+    const caller = providerRouter.createCaller(customerContext);
+
+    await expect(caller.requestQuote({
+      providerId: 7,
+      title: "Need help with a project",
+      description: "Please provide a detailed quote for this project and timeline.",
+    })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("rejects waitlist enrollment for an inactive provider before booking reads", async () => {
+    mocks.getServiceById.mockResolvedValue({ id: 11, providerId: 7, isActive: true, isGroupClass: true });
+    mocks.getProviderById.mockResolvedValue({ id: 7, isActive: false });
+    const caller = waitlistRouter.createCaller(customerContext);
+
+    await expect(caller.join({
+      serviceId: 11,
+      providerId: 7,
+      bookingDate: "2030-01-01",
+      startTime: "10:00",
+      endTime: "11:00",
+    })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
   it("applies the same inactive-provider rule to the public agent API", () => {
     const source = readFileSync(new URL("./publicApiRouter.ts", import.meta.url), "utf8");
     expect(source).toContain("if (!provider || !provider.isActive)");
+  });
+
+  it("blocks authenticated procedures for suspended identities", () => {
+    const source = readFileSync(new URL("./_core/trpc.ts", import.meta.url), "utf8");
+    expect(source).toContain("if (ctx.user.deletedAt)");
   });
 });

@@ -66,7 +66,7 @@ vi.mock("./db", async (importOriginal) => {
   return {
     ...original,
     getProviderByUserId: vi.fn(async (userId: number) => {
-      if (userId === 2) return { id: 10, userId: 2, businessName: "Test Provider", slug: "test-provider-10" };
+      if (userId === 2) return { id: 10, userId: 2, businessName: "Test Provider", slug: "test-provider-10", isActive: true, deletedAt: null };
       return null;
     }),
     getProviderById: vi.fn(async (id: number) => {

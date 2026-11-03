@@ -20,6 +20,13 @@ export const waitlistRouter = router({
       // Verify the service exists and is a group class
       const service = await db.getServiceById(input.serviceId);
       if (!service) throw new TRPCError({ code: "NOT_FOUND", message: "Service not found" });
+      const provider = await db.getProviderById(input.providerId);
+      if (!provider || provider.isActive === false || provider.deletedAt || service.providerId !== input.providerId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "This service is not currently available" });
+      }
+      if (!service.isActive || service.deletedAt) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "This service is not currently available" });
+      }
       if (!service.isGroupClass) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Waitlist is only available for group classes" });
       }

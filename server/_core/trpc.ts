@@ -17,6 +17,9 @@ const requireUser = t.middleware(async opts => {
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
   }
+  if (ctx.user.deletedAt) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This account has been suspended." });
+  }
 
   return next({
     ctx: {

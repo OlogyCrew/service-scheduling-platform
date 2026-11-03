@@ -35,7 +35,7 @@ export const serviceRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const provider = await db.getProviderByUserId(ctx.user.id);
-      if (!provider) {
+      if (!provider || provider.isActive === false || provider.deletedAt) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider to create services" });
       }
       const existingServices = await db.getServicesByProviderId(provider.id);
@@ -192,7 +192,7 @@ export const serviceRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const provider = await db.getProviderByUserId(ctx.user.id);
-      if (!provider) throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
+      if (!provider || provider.isActive === false || provider.deletedAt) throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
       const service = await db.getServiceById(input.id);
       if (!service) throw new TRPCError({ code: "NOT_FOUND", message: "Service not found" });
       if (service.providerId !== provider.id) throw new TRPCError({ code: "FORBIDDEN", message: "Not your service" });
@@ -224,7 +224,7 @@ export const serviceRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const provider = await db.getProviderByUserId(ctx.user.id);
-      if (!provider) throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
+      if (!provider || provider.isActive === false || provider.deletedAt) throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
       const service = await db.getServiceById(input.id);
       if (!service) throw new TRPCError({ code: "NOT_FOUND", message: "Service not found" });
       if (service.providerId !== provider.id) throw new TRPCError({ code: "FORBIDDEN", message: "Not your service" });
@@ -248,7 +248,7 @@ export const serviceRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const provider = await db.getProviderByUserId(ctx.user.id);
-      if (!provider) throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
+      if (!provider || provider.isActive === false || provider.deletedAt) throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
       const service = await db.getServiceById(input.serviceId);
       if (!service) throw new TRPCError({ code: "NOT_FOUND", message: "Service not found" });
       if (service.providerId !== provider.id) throw new TRPCError({ code: "FORBIDDEN", message: "Not your service" });
@@ -291,7 +291,7 @@ export const serviceRouter = router({
     .input(z.object({ photoId: z.number(), serviceId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const provider = await db.getProviderByUserId(ctx.user.id);
-      if (!provider) throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
+      if (!provider || provider.isActive === false || provider.deletedAt) throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
       const service = await db.getServiceById(input.serviceId);
       if (!service || service.providerId !== provider.id) throw new TRPCError({ code: "FORBIDDEN", message: "Not your service" });
       await db.deleteServicePhoto(input.photoId);
@@ -302,7 +302,7 @@ export const serviceRouter = router({
     .input(z.object({ photoId: z.number(), serviceId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const provider = await db.getProviderByUserId(ctx.user.id);
-      if (!provider) throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
+      if (!provider || provider.isActive === false || provider.deletedAt) throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
       const service = await db.getServiceById(input.serviceId);
       if (!service || service.providerId !== provider.id) throw new TRPCError({ code: "FORBIDDEN", message: "Not your service" });
       await db.setServicePrimaryPhoto(input.serviceId, input.photoId);

@@ -72,6 +72,7 @@ describe("booking payment entitlement boundary", () => {
       id: 501,
       businessName: "Lifecycle Provider",
       isOfficial: false,
+      isActive: true,
       stripeAccountId: "acct_provider",
       payoutEnabled: true,
     });
@@ -90,11 +91,29 @@ describe("booking payment entitlement boundary", () => {
     expect(referralMocks.spendReferralCredits).not.toHaveBeenCalled();
   });
 
+  it("denies inactive providers before any Stripe or referral-credit mutation", async () => {
+    dbMocks.getProviderById.mockResolvedValue({
+      id: 501,
+      businessName: "Contained Provider",
+      isOfficial: false,
+      isActive: false,
+      stripeAccountId: "acct_provider",
+      payoutEnabled: true,
+    });
+
+    await expect(stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id }))
+      .rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
+    expect(referralMocks.spendReferralCredits).not.toHaveBeenCalled();
+  });
+
   it("denies paid providers whose connected account is not payout-ready", async () => {
     dbMocks.getProviderById.mockResolvedValue({
       id: 501,
       businessName: "Lifecycle Provider",
       isOfficial: false,
+      isActive: true,
       stripeAccountId: "acct_provider",
       payoutEnabled: false,
     });
@@ -122,6 +141,7 @@ describe("booking payment entitlement boundary", () => {
       id: 501,
       businessName: "OlogyCrew Demo",
       isOfficial: true,
+      isActive: true,
       stripeAccountId: null,
       payoutEnabled: false,
     });
