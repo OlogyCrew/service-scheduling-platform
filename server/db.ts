@@ -149,6 +149,7 @@ export {
 // Customer subscriptions
 export {
   getCustomerSubscription,
+  clearCustomerStripeSubscriptionReference,
   getCustomerTier,
   getUserFavoriteCount,
   upsertCustomerSubscription,
@@ -158,6 +159,7 @@ export {
 // Booking payment lifecycle helpers
 export {
   upsertBookingPaymentByStripeIntent,
+  clearProviderStripeSubscriptionReference,
 } from "./db/payments";
 
 // Service packages

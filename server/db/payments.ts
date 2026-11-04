@@ -221,6 +221,17 @@ export async function upsertProviderSubscription(data: {
   }
 }
 
+export async function clearProviderStripeSubscriptionReference(providerId: number) {
+  const database = await getDb();
+  if (!database) return;
+  await database.update(providerSubscriptions).set({
+    tier: "free",
+    status: "cancelled",
+    stripeSubscriptionId: null,
+    cancelAtPeriodEnd: false,
+  }).where(eq(providerSubscriptions.providerId, providerId));
+}
+
 export async function getProviderTier(providerId: number): Promise<"free" | "basic" | "premium"> {
   const sub = await getProviderSubscription(providerId);
   return resolveProviderEntitlement(sub).effectiveTier;

@@ -8,7 +8,7 @@ import { SUBSCRIPTION_TIERS, STRIPE_PRODUCT_NAME, getTrialDays, type Subscriptio
 import { sendTrialStartedNotification, checkAndSendTrialMilestoneNotification } from "./trialNotifications";
 import { sendNotification } from "./notifications";
 import { TRIAL_DAYS, providerHasFeature, resolveProviderEntitlement } from "../shared/entitlements";
-import { requireStripeSubscriptionPeriodEnd } from "./stripeSubscriptionLifecycle";
+import { isStripeResourceMissing, requireStripeSubscriptionPeriodEnd } from "./stripeSubscriptionLifecycle";
 import { getSubscriptionAnalytics as getEffectiveSubscriptionAnalytics } from "./db/payments";
 import { createSubscriptionInAppNotice } from "./subscriptionNotifications";
 
@@ -254,7 +254,10 @@ export const subscriptionRouter = router({
           currentInterval = item.price.recurring.interval as "month" | "year";
         }
       } catch (e) {
-        // If Stripe call fails, default to month
+        if (isStripeResourceMissing(e)) {
+          await db.clearProviderStripeSubscriptionReference(provider.id);
+        }
+        // If Stripe call fails, default to month without failing the dashboard.
       }
     }
 
@@ -289,11 +292,19 @@ export const subscriptionRouter = router({
 
       // Reuse every retained live Stripe subscription instead of creating a duplicate.
       if (currentSub?.stripeSubscriptionId) {
-        const stripeSub = await stripe.subscriptions.retrieve(currentSub.stripeSubscriptionId);
+        let stripeSub: Stripe.Subscription | null = null;
+        try {
+          stripeSub = await stripe.subscriptions.retrieve(currentSub.stripeSubscriptionId);
+        } catch (error) {
+          if (!isStripeResourceMissing(error)) throw error;
+          await db.clearProviderStripeSubscriptionReference(provider.id);
+        }
 
         // If the Stripe subscription is actually canceled (e.g., trial ended without payment),
         // skip the in-place update and fall through to create a new checkout session
-        if (stripeSub.status === "canceled" || stripeSub.status === "incomplete_expired") {
+        if (!stripeSub) {
+          // The local reference was stale; the new checkout below will create a fresh subscription.
+        } else if (stripeSub.status === "canceled" || stripeSub.status === "incomplete_expired") {
           // Update local DB to reflect the actual canceled state
           await db.upsertProviderSubscription({
             providerId: provider.id,

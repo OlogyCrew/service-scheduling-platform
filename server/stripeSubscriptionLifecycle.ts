@@ -63,3 +63,12 @@ export function requireStripeSubscriptionPeriodEnd(subscription: StripeSubscript
   }
   return currentPeriodEnd;
 }
+
+/** Stripe returns resource_missing when a local reference outlives a deleted object. */
+export function isStripeResourceMissing(error: unknown): boolean {
+  const candidate = error as { type?: string; code?: string; statusCode?: number; raw?: { code?: string }; message?: string } | null;
+  return candidate?.code === "resource_missing"
+    || candidate?.raw?.code === "resource_missing"
+    || candidate?.statusCode === 404
+    || (candidate?.type === "StripeInvalidRequestError" && /resource_missing|No such subscription|No such payment intent/i.test(candidate.message || ""));
+}

@@ -7,7 +7,7 @@ import { CUSTOMER_TIERS, CUSTOMER_STRIPE_PRODUCT_NAME, type CustomerTier } from 
 import { ENV } from "./_core/env";
 import { sendNotification } from "./notifications";
 import { customerHasFeature, resolveCustomerEntitlement } from "../shared/entitlements";
-import { requireStripeSubscriptionPeriodEnd } from "./stripeSubscriptionLifecycle";
+import { isStripeResourceMissing, requireStripeSubscriptionPeriodEnd } from "./stripeSubscriptionLifecycle";
 import { createSubscriptionInAppNotice } from "./subscriptionNotifications";
 
 const stripe = new Stripe(ENV.stripeSecretKey, { apiVersion: "2026-01-28.clover" as any });
@@ -87,7 +87,10 @@ export const customerSubscriptionRouter = router({
           currentInterval = item.price.recurring.interval as "month" | "year";
         }
       } catch (e) {
-        // If Stripe call fails, default to month
+        if (isStripeResourceMissing(e)) {
+          await db.clearCustomerStripeSubscriptionReference(ctx.user.id);
+        }
+        // If Stripe call fails, default to month without failing the account page.
       }
     }
 
@@ -121,9 +124,15 @@ export const customerSubscriptionRouter = router({
       const existingSubForCheck = await db.getCustomerSubscription(ctx.user.id);
       if (existingSubForCheck?.stripeSubscriptionId) {
         // Reuse every retained live Stripe subscription instead of creating a duplicate.
-        const stripeSub = await stripe.subscriptions.retrieve(existingSubForCheck.stripeSubscriptionId);
+        let stripeSub: Stripe.Subscription | null = null;
+        try {
+          stripeSub = await stripe.subscriptions.retrieve(existingSubForCheck.stripeSubscriptionId);
+        } catch (error) {
+          if (!isStripeResourceMissing(error)) throw error;
+          await db.clearCustomerStripeSubscriptionReference(ctx.user.id);
+        }
         // If the Stripe subscription is canceled (e.g., trial ended), skip update and create new checkout
-        if (stripeSub.status !== "canceled" && stripeSub.status !== "incomplete_expired") {
+        if (stripeSub && stripeSub.status !== "canceled" && stripeSub.status !== "incomplete_expired") {
         if (["past_due", "unpaid", "paused", "incomplete"].includes(stripeSub.status)) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",

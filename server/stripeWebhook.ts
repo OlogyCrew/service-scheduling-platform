@@ -8,7 +8,7 @@ import { sendNotification } from "./notifications";
 import { sendPushNotification } from "./notifications/pushHelper";
 import { executePartnerTransfer } from "./partnerSplit";
 import { generateInvoicePdf } from "./services/invoicePdf";
-import { getStripeSubscriptionPeriod, mapStripeSubscriptionStatus } from "./stripeSubscriptionLifecycle";
+import { getStripeSubscriptionPeriod, isStripeResourceMissing, mapStripeSubscriptionStatus } from "./stripeSubscriptionLifecycle";
 import { CUSTOMER_PLANS, PROVIDER_PLANS } from "../shared/entitlements";
 import { createSubscriptionInAppNotice } from "./subscriptionNotifications";
 import { queueCrmBookingProjection, queueCrmInvoiceProjection } from "./crm/sourceHooks";
@@ -738,6 +738,10 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
       actionUrl: context.data.billingUrl,
     });
   } catch (error: any) {
+    if (isStripeResourceMissing(error)) {
+      console.warn(`[Stripe] Ignoring invoice failure for deleted subscription ${subscriptionId}`);
+      return;
+    }
     console.error(`[Stripe] Failed to synchronize subscription payment failure for ${subscriptionId}:`, error.message);
   }
 }

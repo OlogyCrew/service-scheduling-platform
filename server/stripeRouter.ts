@@ -61,6 +61,15 @@ export const stripeRouter = router({
       const provider = await db.getProviderById(booking.providerId);
       if (!service || !provider) throw new Error("Service or provider not found");
 
+      const expectedPaymentType = service.depositRequired ? "deposit" : "full";
+      const existingPayment = await db.getPaymentByBookingId(booking.id);
+      if (existingPayment?.status === "captured" && existingPayment.paymentType === expectedPaymentType) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This booking payment has already been completed. No additional charge was created.",
+        });
+      }
+
       if (provider.isActive === false || provider.deletedAt) {
         throw new TRPCError({
           code: "FORBIDDEN",

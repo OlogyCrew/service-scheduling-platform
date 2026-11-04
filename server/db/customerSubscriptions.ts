@@ -83,6 +83,17 @@ export async function upsertCustomerSubscription(data: {
   }
 }
 
+export async function clearCustomerStripeSubscriptionReference(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(customerSubscriptions).set({
+    tier: "free",
+    status: "cancelled",
+    stripeSubscriptionId: null,
+    cancelAtPeriodEnd: false,
+  }).where(eq(customerSubscriptions.userId, userId));
+}
+
 export async function getCustomerSubscriptionAnalytics() {
   const db = await getDb();
   if (!db) return { free: 0, pro: 0, business: 0, total: 0 };

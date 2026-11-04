@@ -6,6 +6,7 @@ const stripeMocks = vi.hoisted(() => ({
 
 const dbMocks = vi.hoisted(() => ({
   getBookingById: vi.fn(),
+  getPaymentByBookingId: vi.fn(),
   getServiceById: vi.fn(),
   getProviderById: vi.fn(),
   getProviderTier: vi.fn(),
@@ -67,6 +68,7 @@ describe("booking payment entitlement boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dbMocks.getBookingById.mockResolvedValue(booking);
+    dbMocks.getPaymentByBookingId.mockResolvedValue(null);
     dbMocks.getServiceById.mockResolvedValue(service);
     dbMocks.getProviderById.mockResolvedValue({
       id: 501,
@@ -134,6 +136,15 @@ describe("booking payment entitlement boundary", () => {
       }),
     }));
     expect(result.url).toBe("https://checkout.stripe.test/session");
+  });
+
+  it("does not create a second Stripe checkout after the same payment was captured", async () => {
+    dbMocks.getPaymentByBookingId.mockResolvedValue({ status: "captured", paymentType: "full" });
+
+    await expect(stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
+    expect(referralMocks.spendReferralCredits).not.toHaveBeenCalled();
   });
 
   it("keeps the official demo bypass free and never creates a Stripe charge", async () => {
