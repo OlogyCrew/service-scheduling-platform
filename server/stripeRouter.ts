@@ -97,10 +97,12 @@ export const stripeRouter = router({
       }
 
       const providerTier = await db.getProviderTier(provider.id);
-      if (!providerHasFeature(providerTier, "paymentCollection")) {
+      const providerSubscription = await db.getProviderSubscription(provider.id);
+      const hasActivePaidSubscription = providerSubscription?.status === "active";
+      if (!hasActivePaidSubscription || !providerHasFeature(providerTier, "paymentCollection")) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "This provider is not currently accepting payments through OlogyCrew. No charge was created.",
+          message: "This provider must have an active paid subscription before accepting payments through OlogyCrew. No charge was created.",
         });
       }
       if (!provider.stripeAccountId || !provider.payoutEnabled) {

@@ -10,6 +10,7 @@ const dbMocks = vi.hoisted(() => ({
   getServiceById: vi.fn(),
   getProviderById: vi.fn(),
   getProviderTier: vi.fn(),
+  getProviderSubscription: vi.fn(),
   updateBookingStatus: vi.fn(),
   createNotification: vi.fn(),
 }));
@@ -79,12 +80,27 @@ describe("booking payment entitlement boundary", () => {
       payoutEnabled: true,
     });
     dbMocks.getProviderTier.mockResolvedValue("basic");
+    dbMocks.getProviderSubscription.mockResolvedValue({ tier: "basic", status: "active" });
     referralMocks.getReferralCreditBalance.mockResolvedValue("0.00");
     stripeMocks.checkout.sessions.create.mockResolvedValue({ id: "cs_booking", url: "https://checkout.stripe.test/session" });
   });
 
   it("denies Starter providers even when a retained Stripe account remains connected", async () => {
     dbMocks.getProviderTier.mockResolvedValue("free");
+
+    await expect(stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id }))
+      .rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
+    expect(referralMocks.spendReferralCredits).not.toHaveBeenCalled();
+  });
+
+  it("denies trialing providers before any Stripe or referral-credit mutation", async () => {
+    dbMocks.getProviderSubscription.mockResolvedValue({
+      tier: "basic",
+      status: "trialing",
+      trialEndsAt: new Date(Date.now() + 86_400_000),
+    });
 
     await expect(stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id }))
       .rejects.toMatchObject({ code: "FORBIDDEN" });
