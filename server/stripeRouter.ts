@@ -186,6 +186,8 @@ export const stripeRouter = router({
             userId: ctx.user.id.toString(),
             type: "customer",
           },
+        }, {
+          idempotencyKey: `ologycrew-customer-${ctx.user.id}`,
         });
         stripeCustomerId = customer.id;
         await db.updateUserStripeCustomerId(ctx.user.id, stripeCustomerId);

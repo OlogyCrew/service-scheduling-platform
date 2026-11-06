@@ -174,9 +174,25 @@ describe("booking payment entitlement boundary", () => {
       email: "customer@example.com",
       name: "Booking Customer",
       metadata: { userId: "101", type: "customer" },
-    }));
+    }), { idempotencyKey: "ologycrew-customer-101" });
     expect(dbMocks.updateUserStripeCustomerId).toHaveBeenCalledWith(101, "cus_new_booking_customer");
     expect(stripeMocks.checkout.sessions.create).toHaveBeenCalledWith(expect.objectContaining({ customer: "cus_new_booking_customer" }), expect.any(Object));
+  });
+
+  it("uses the same idempotency keys when first-time payment requests race", async () => {
+    dbMocks.getUserById.mockResolvedValue({ stripeCustomerId: null });
+    stripeMocks.customers.create.mockResolvedValue({ id: "cus_race_safe" });
+
+    await Promise.all(Array.from({ length: 50 }, () =>
+      stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id })
+    ));
+
+    expect(stripeMocks.customers.create).toHaveBeenCalledTimes(50);
+    expect(stripeMocks.customers.create.mock.calls.map(([, options]) => options.idempotencyKey))
+      .toEqual(Array(50).fill("ologycrew-customer-101"));
+    expect(stripeMocks.checkout.sessions.create).toHaveBeenCalledTimes(50);
+    expect(stripeMocks.checkout.sessions.create.mock.calls.map(([, options]) => options.idempotencyKey))
+      .toEqual(Array(50).fill("ologycrew-booking-9001-full-10000-0.00"));
   });
 
   it("does not create a second Stripe checkout after the same payment was captured", async () => {
