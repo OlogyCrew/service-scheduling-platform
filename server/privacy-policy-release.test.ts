@@ -83,7 +83,7 @@ describe("privacy policy release presentation", () => {
 
   it("retains all 13 approved revised sections and critical approved language while excluding review and release-blocker markers", () => {
     const normalized = REVISED_PRIVACY_POLICY_CONTENT.replace(/\s+/g, " ").trim();
-    expect(createHash("sha256").update(normalized).digest("hex")).toBe("03f20168e35040ae68dddc2fdfc9a56c90185f2b0a159fd5157a460170067c35");
+    expect(createHash("sha256").update(normalized).digest("hex")).toBe("f976f1622603b7e7fa80c2d3c87be29ce405f0ce38ff58d29f6c6bb47c808268");
     for (let section = 1; section <= 13; section += 1) {
       expect(REVISED_PRIVACY_POLICY_CONTENT).toContain(`## ${section}.`);
     }
@@ -92,6 +92,7 @@ describe("privacy policy release presentation", () => {
     expect(REVISED_PRIVACY_POLICY_CONTENT).toContain("Marketing & Promotions is off by default.");
     expect(REVISED_PRIVACY_POLICY_CONTENT).toContain("short-lived encrypted link");
     expect(REVISED_PRIVACY_POLICY_CONTENT).toContain("Card payment credentials are collected and processed by Stripe through Stripe Checkout");
+    expect(REVISED_PRIVACY_POLICY_CONTENT).toContain("Stripe may collect identifying information about the devices that connect to its services");
     expect(REVISED_PRIVACY_POLICY_CONTENT).toContain("We will post any revised Privacy Policy with its effective date.");
 
     for (const marker of ["UNPUBLISHED REVIEW DRAFT", "NOT EFFECTIVE", "RELEASE GATE", "OWNER/COUNSEL", "Prepared:", "Coordinated proposed version", "Proposed effective date"]) {

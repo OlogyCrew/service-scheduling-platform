@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const stripeMocks = vi.hoisted(() => ({
   checkout: { sessions: { create: vi.fn() } },
+  customers: { create: vi.fn() },
 }));
 
 const dbMocks = vi.hoisted(() => ({
@@ -11,6 +12,9 @@ const dbMocks = vi.hoisted(() => ({
   getProviderById: vi.fn(),
   getProviderTier: vi.fn(),
   getProviderSubscription: vi.fn(),
+  getUserById: vi.fn(),
+  getCustomerSubscription: vi.fn(),
+  updateUserStripeCustomerId: vi.fn(),
   updateBookingStatus: vi.fn(),
   createNotification: vi.fn(),
 }));
@@ -23,6 +27,7 @@ const referralMocks = vi.hoisted(() => ({
 vi.mock("stripe", () => ({
   default: class StripeMock {
     checkout = stripeMocks.checkout;
+    customers = stripeMocks.customers;
   },
 }));
 
@@ -81,6 +86,8 @@ describe("booking payment entitlement boundary", () => {
     });
     dbMocks.getProviderTier.mockResolvedValue("basic");
     dbMocks.getProviderSubscription.mockResolvedValue({ tier: "basic", status: "active" });
+    dbMocks.getUserById.mockResolvedValue({ stripeCustomerId: "cus_booking_customer" });
+    dbMocks.getCustomerSubscription.mockResolvedValue(null);
     referralMocks.getReferralCreditBalance.mockResolvedValue("0.00");
     stripeMocks.checkout.sessions.create.mockResolvedValue({ id: "cs_booking", url: "https://checkout.stripe.test/session" });
   });
@@ -146,12 +153,30 @@ describe("booking payment entitlement boundary", () => {
     const result = await stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id });
 
     expect(stripeMocks.checkout.sessions.create).toHaveBeenCalledWith(expect.objectContaining({
+      customer: "cus_booking_customer",
+      billing_address_collection: "required",
+      customer_update: { name: "auto", address: "auto" },
       payment_intent_data: expect.objectContaining({
         application_fee_amount: 100,
         transfer_data: { destination: "acct_provider" },
       }),
-    }));
+    }), expect.objectContaining({ idempotencyKey: expect.stringContaining("ologycrew-booking-9001-full") }));
     expect(result.url).toBe("https://checkout.stripe.test/session");
+  });
+
+  it("creates and persists a Stripe Customer when the user has none yet", async () => {
+    dbMocks.getUserById.mockResolvedValue({ stripeCustomerId: null });
+    stripeMocks.customers.create.mockResolvedValue({ id: "cus_new_booking_customer" });
+
+    await stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id });
+
+    expect(stripeMocks.customers.create).toHaveBeenCalledWith(expect.objectContaining({
+      email: "customer@example.com",
+      name: "Booking Customer",
+      metadata: { userId: "101", type: "customer" },
+    }));
+    expect(dbMocks.updateUserStripeCustomerId).toHaveBeenCalledWith(101, "cus_new_booking_customer");
+    expect(stripeMocks.checkout.sessions.create).toHaveBeenCalledWith(expect.objectContaining({ customer: "cus_new_booking_customer" }), expect.any(Object));
   });
 
   it("does not create a second Stripe checkout after the same payment was captured", async () => {

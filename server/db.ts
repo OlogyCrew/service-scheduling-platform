@@ -249,6 +249,8 @@ export {
 
 // Custom auth helpers
 export {
+  getUserById,
+  updateUserStripeCustomerId,
   getUserByEmail,
   getUserByGoogleId,
   getDeletedUserByGoogleId,

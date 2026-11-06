@@ -73,6 +73,7 @@ Preparing or opening a review link does not create a booking or quote request, r
 ## 6. Data Security
 
 We implement appropriate technical and organizational security measures to protect your personal information. Card payment credentials are collected and processed by Stripe through Stripe Checkout; OlogyCrew does not store full card numbers, CVCs, or expiration dates. OlogyCrew may store limited transaction and subscription metadata, such as amount, status, payment-method label, and Stripe transaction, customer, or subscription identifiers, to operate the Service. However, no method of transmission over the Internet is 100% secure, and we cannot guarantee absolute security.
+Stripe may collect identifying information about the devices that connect to its services, such as device and usage signals, to operate and improve its services for us, including fraud detection and prevention. Stripe processes this information under its own privacy policy, available at https://stripe.com/privacy.
 
 ## 7. Data Retention & Anonymization
 

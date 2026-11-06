@@ -173,6 +173,26 @@ export const stripeRouter = router({
 
       const platformFeeInCents = Math.round(amountInCents * PLATFORM_FEE_RATE);
 
+      // Reuse one Stripe Customer per OlogyCrew user so Stripe can correlate
+      // payment history and risk signals across bookings and subscriptions.
+      const customerUser = await db.getUserById(ctx.user.id);
+      const customerSubscription = await db.getCustomerSubscription(ctx.user.id);
+      let stripeCustomerId = customerUser?.stripeCustomerId || customerSubscription?.stripeCustomerId || undefined;
+      if (!stripeCustomerId) {
+        const customer = await stripe.customers.create({
+          email: ctx.user.email || undefined,
+          name: ctx.user.name || undefined,
+          metadata: {
+            userId: ctx.user.id.toString(),
+            type: "customer",
+          },
+        });
+        stripeCustomerId = customer.id;
+        await db.updateUserStripeCustomerId(ctx.user.id, stripeCustomerId);
+      } else if (!customerUser?.stripeCustomerId) {
+        await db.updateUserStripeCustomerId(ctx.user.id, stripeCustomerId);
+      }
+
       // Build checkout session options
       const description = creditApplied > 0
         ? `Booking #${booking.bookingNumber} - ${service.depositRequired ? "Deposit" : "Full Payment"} (after $${creditApplied.toFixed(2)} credit applied)`
@@ -201,7 +221,12 @@ export const stripeRouter = router({
         mode: "payment",
         success_url: `${ctx.req.headers.origin}/booking/${booking.id}?payment=success`,
         cancel_url: `${ctx.req.headers.origin}/booking/${booking.id}?payment=cancelled`,
-        customer_email: ctx.user.email || undefined,
+        customer: stripeCustomerId,
+        customer_update: {
+          name: "auto",
+          address: "auto",
+        },
+        billing_address_collection: "required",
         client_reference_id: ctx.user.id.toString(),
         metadata: {
           bookingId: booking.id.toString(),
@@ -230,7 +255,9 @@ export const stripeRouter = router({
         },
       };
 
-      const session = await stripe.checkout.sessions.create(sessionOptions);
+      const session = await stripe.checkout.sessions.create(sessionOptions, {
+        idempotencyKey: `ologycrew-booking-${booking.id}-${expectedPaymentType}-${amountInCents}-${creditApplied.toFixed(2)}`,
+      });
       return { url: session.url, paidWithCredits: false, creditApplied: creditApplied.toFixed(2) };
     }),
 });

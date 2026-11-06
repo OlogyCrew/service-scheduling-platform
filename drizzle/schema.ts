@@ -28,6 +28,8 @@ export const users = mysqlTable("users", {
   firstName: varchar("firstName", { length: 100 }),
   lastName: varchar("lastName", { length: 100 }),
   phone: varchar("phone", { length: 20 }),
+  // Reused for booking Checkout so Stripe can correlate customer payment history.
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
   // Billing address (optional, used for invoices)
   billingAddressLine1: varchar("billingAddressLine1", { length: 255 }),
   billingAddressLine2: varchar("billingAddressLine2", { length: 255 }),
