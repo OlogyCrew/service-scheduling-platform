@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import {
-  notificationPreferences,
   providerSurveyCampaigns,
   providerSurveyRecipients,
   providerSurveyResponses,
@@ -46,15 +45,13 @@ export async function createProviderSurveyCampaign(createdByUserId: number, name
     email: users.email,
   }).from(serviceProviders)
     .innerJoin(users, eq(serviceProviders.userId, users.id))
-    .leftJoin(notificationPreferences, eq(notificationPreferences.userId, users.id))
     .where(and(
       eq(serviceProviders.isActive, true),
       eq(serviceProviders.isOfficial, false),
       isNull(serviceProviders.deletedAt),
       isNull(users.deletedAt),
       sql`${users.email} IS NOT NULL AND TRIM(${users.email}) <> ''`,
-      sql`COALESCE(${notificationPreferences.emailEnabled}, 1) = 1`,
-      sql`COALESCE(${notificationPreferences.marketingEmail}, 0) = 1`,
+      sql`EXISTS (SELECT 1 FROM notification_preferences np WHERE np.userId = ${users.id} AND COALESCE(np.emailEnabled, 1) = 1 AND COALESCE(np.marketingEmail, 0) = 1)`,
     ));
 
   if (eligibleProviders.length > 0) {
