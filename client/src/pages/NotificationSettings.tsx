@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { getLoginUrl } from "@/const";
 import { ArrowLeft, Bell, Mail, MessageSquare, Loader2, ShieldCheck } from "lucide-react";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { PushNotificationSettings } from "@/components/PushNotificationSettings";
@@ -46,6 +46,7 @@ const DEFAULT_PREFS: Prefs = {
 
 export default function NotificationSettings() {
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const [, navigate] = useLocation();
   const utils = trpc.useUtils();
 
   const { data: serverPrefs, isLoading } = trpc.notification.getPreferences.useQuery(
@@ -90,6 +91,15 @@ export default function NotificationSettings() {
     updatePrefs.mutate(updated);
   }
 
+  function goBack() {
+    const cameFromThisSite = document.referrer.startsWith(window.location.origin);
+    if (cameFromThisSite && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    navigate("/notifications");
+  }
+
   if (authLoading) {
     return (
       <div className="ology-settings-page min-h-screen bg-page">
@@ -126,7 +136,7 @@ export default function NotificationSettings() {
       <div className="ology-settings-content container max-w-2xl py-8">
         {/* Header */}
         <div className="ology-settings-heading flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
+          <Button variant="ghost" size="icon" onClick={goBack} aria-label="Back to notifications" title="Back to notifications">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>

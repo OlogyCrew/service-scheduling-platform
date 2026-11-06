@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   user: { id: 1, name: "Example User" } as { id: number; name: string } | null,
   authenticated: true,
   mutation: vi.fn(),
+  navigate: vi.fn(),
   providerInput: null as unknown,
   customerInput: null as unknown,
 }));
@@ -37,6 +38,7 @@ vi.mock("@/components/PushNotificationSettings", () => ({
 }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...props }: any) => React.createElement("a", { href, ...props }, children),
+  useLocation: () => ["/notification-settings", mocks.navigate],
 }));
 vi.mock("@/lib/trpc", () => ({
   trpc: {
@@ -65,6 +67,7 @@ afterEach(() => {
   mocks.user = { id: 1, name: "Example User" };
   mocks.authenticated = true;
   mocks.mutation.mockReset();
+  mocks.navigate.mockReset();
   mocks.providerInput = null;
   mocks.customerInput = null;
 });
@@ -111,5 +114,11 @@ describe("billing and settings visual surfaces", () => {
     expect(screen.getByText("Sign in to manage preferences")).toBeVisible();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     expect(mocks.mutation).not.toHaveBeenCalled();
+  });
+
+  it("falls back to Notifications when opened directly", () => {
+    render(React.createElement(NotificationSettings));
+    fireEvent.click(screen.getByRole("button", { name: "Back to notifications" }));
+    expect(mocks.navigate).toHaveBeenCalledWith("/notifications");
   });
 });
