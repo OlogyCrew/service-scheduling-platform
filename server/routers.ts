@@ -45,6 +45,7 @@ import { termsRouter } from "./termsRouter";
 import { crmOperationsRouter } from "./crmOperationsRouter";
 import { customersRouter } from "./customersRouter";
 import { agentHandoffRouter } from "./routers/agentHandoffRouter";
+import { providerSurveyRouter } from "./providerSurveyRouter";
 
 export const appRouter = router({
   system: systemRouter,
@@ -84,6 +85,7 @@ export const appRouter = router({
   crmOperations: crmOperationsRouter,
   customers: customersRouter,
   agentHandoff: agentHandoffRouter,
+  providerSurvey: providerSurveyRouter,
 });
 
 export type AppRouter = typeof appRouter;

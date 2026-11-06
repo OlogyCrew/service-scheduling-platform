@@ -1,4 +1,4 @@
-import { Activity, Bell, Briefcase, CalendarDays, Crown, FileText, LayoutDashboard, MessageSquare, Settings, Share2, Shield, ShieldCheck, Star, UserPlus, Users, Wallet } from "lucide-react";
+import { Activity, Bell, Briefcase, CalendarDays, ClipboardList, Crown, FileText, LayoutDashboard, MessageSquare, Settings, Share2, Shield, ShieldCheck, Star, UserPlus, Users, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type AdminNavItem = { id: string; label: string; icon: LucideIcon };
@@ -14,7 +14,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     { id: "documents", label: "Documents", icon: FileText },
   ] },
   { label: "Growth & Communications", items: [
-    { id: "referrals", label: "Referrals", icon: UserPlus }, { id: "push", label: "Push", icon: Bell },
+    { id: "referrals", label: "Referrals", icon: UserPlus }, { id: "provider-survey", label: "Provider Survey", icon: ClipboardList }, { id: "push", label: "Push", icon: Bell },
     { id: "social-media", label: "Social Media", icon: Share2 },
   ] },
   { label: "Platform", items: [

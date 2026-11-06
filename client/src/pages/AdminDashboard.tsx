@@ -81,6 +81,7 @@ import { CustomersPilotHealthPanel } from "./admin/CustomersPilotHealthPanel";
 import { AdminNavigation } from "./admin/AdminNavigation";
 import { getAdminSectionLabel, resolveAdminSection } from "./admin/adminNavigation";
 import { AdminBookingsPanel } from "./admin/AdminBookingsPanel";
+import { ProviderSurveyPanel } from "./admin/ProviderSurveyPanel";
 import "./admin/AdminWorkspace.css";
 
 function SystemHealthOverview() {
@@ -767,6 +768,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="referrals" aria-labelledby="admin-section-heading">
             <ReferralAnalyticsPanel />
+          </TabsContent>
+
+          <TabsContent value="provider-survey" aria-labelledby="admin-section-heading">
+            <ProviderSurveyPanel />
           </TabsContent>
 
           <TabsContent value="push" aria-labelledby="admin-section-heading">

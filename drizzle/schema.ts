@@ -1537,3 +1537,55 @@ export const crmOperationalState = mysqlTable("crm_operational_state", {
 ]);
 export type CrmOperationalState = typeof crmOperationalState.$inferSelect;
 export type InsertCrmOperationalState = typeof crmOperationalState.$inferInsert;
+
+
+// ============================================================================
+// PROVIDER EXPERIENCE SURVEYS
+// ============================================================================
+
+export const providerSurveyCampaigns = mysqlTable("provider_survey_campaigns", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  status: mysqlEnum("status", ["draft", "sending", "sent", "closed"]).default("draft").notNull(),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  sentAt: timestamp("sentAt"),
+  closedAt: timestamp("closedAt"),
+}, (table) => [
+  index("provider_survey_campaign_status_idx").on(table.status, table.createdAt),
+]);
+export type ProviderSurveyCampaign = typeof providerSurveyCampaigns.$inferSelect;
+export type InsertProviderSurveyCampaign = typeof providerSurveyCampaigns.$inferInsert;
+
+export const providerSurveyRecipients = mysqlTable("provider_survey_recipients", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignId: int("campaignId").notNull().references(() => providerSurveyCampaigns.id),
+  providerId: int("providerId").notNull().references(() => serviceProviders.id),
+  userId: int("userId").notNull().references(() => users.id),
+  emailSnapshot: varchar("emailSnapshot", { length: 320 }).notNull(),
+  tokenHash: varchar("tokenHash", { length: 64 }).notNull().unique(),
+  status: mysqlEnum("status", ["invited", "sent", "responded", "failed"]).default("invited").notNull(),
+  sentAt: timestamp("sentAt"),
+  respondedAt: timestamp("respondedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  unique("provider_survey_campaign_provider_unique").on(table.campaignId, table.providerId),
+  index("provider_survey_recipient_status_idx").on(table.campaignId, table.status),
+  index("provider_survey_recipient_provider_idx").on(table.providerId),
+]);
+export type ProviderSurveyRecipient = typeof providerSurveyRecipients.$inferSelect;
+export type InsertProviderSurveyRecipient = typeof providerSurveyRecipients.$inferInsert;
+
+export const providerSurveyResponses = mysqlTable("provider_survey_responses", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignId: int("campaignId").notNull().references(() => providerSurveyCampaigns.id),
+  recipientId: int("recipientId").notNull().unique().references(() => providerSurveyRecipients.id),
+  providerId: int("providerId").notNull().references(() => serviceProviders.id),
+  answers: json("answers").$type<Record<string, string | string[]>>().notNull(),
+  submittedAt: timestamp("submittedAt").defaultNow().notNull(),
+}, (table) => [
+  index("provider_survey_response_campaign_idx").on(table.campaignId, table.submittedAt),
+  index("provider_survey_response_provider_idx").on(table.providerId),
+]);
+export type ProviderSurveyResponse = typeof providerSurveyResponses.$inferSelect;
+export type InsertProviderSurveyResponse = typeof providerSurveyResponses.$inferInsert;

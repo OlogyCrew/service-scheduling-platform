@@ -98,6 +98,7 @@ import FeaturedProfessionals from "./pages/FeaturedProfessionals";
 import PromotionDetail from "./pages/PromotionDetail";
 import ProviderBenefits from "./pages/ProviderBenefits";
 import PlatformProducts from "./pages/PlatformProducts";
+import ProviderSurvey from "./pages/ProviderSurvey";
 
 // Admin
 import AdminDashboard from "./pages/AdminDashboard";
@@ -205,6 +206,7 @@ function Router() {
       <Route path="/notifications" component={Notifications} />
       <Route path="/notification-settings" component={NotificationSettings} />
       <Route path="/unsubscribe/:token" component={Unsubscribe} />
+      <Route path="/provider-survey/:token" component={ProviderSurvey} />
       <Route path="/embed/book/:serviceId" component={EmbedBooking} />
       <Route path="/embed/provider/:providerId" component={EmbedBooking} />
       <Route path="/provider/widgets">{() => <ProviderOnlyGuard featureName="Widgets"><WidgetGenerator /></ProviderOnlyGuard>}</Route>

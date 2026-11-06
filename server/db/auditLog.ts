@@ -35,7 +35,9 @@ export type AuditAction =
   | "run_customers_dry_run"
   | "run_customers_backfill"
   | "run_customers_repair"
-  | "rebuild_customers_projection";
+  | "rebuild_customers_projection"
+  | "prepare_provider_survey"
+  | "send_provider_survey";
 
 export type TargetType = "user" | "provider" | "review" | "booking" | "document" | "system" | "terms_version";
 

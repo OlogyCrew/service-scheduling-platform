@@ -850,6 +850,24 @@ The OlogyCrew Team
       smsBody: `Welcome to OlogyCrew! Your provider profile is live. Complete your setup to start receiving bookings.`,
     },
 
+    provider_survey: {
+      subject: `Help us improve how providers use OlogyCrew`,
+      body: `
+Hello ${data.providerName || 'there'},
+
+We’re learning how providers use OlogyCrew so we can improve booking, scheduling, and payment options for your business. This short survey takes about two minutes.
+
+Your answers will help us understand what works well and what providers need next.
+
+[Complete the provider survey](${data.surveyUrl})
+
+Thank you for helping us improve OlogyCrew.
+
+OlogyCrew
+Local work, well done.
+      `.trim(),
+    },
+
     // ============================================================================
     // WAITLIST NOTIFICATIONS
     // ============================================================================

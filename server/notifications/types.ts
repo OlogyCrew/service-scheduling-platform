@@ -46,6 +46,7 @@ export type NotificationType =
   | 'trial_expired'
   | 'welcome_customer'
   | 'welcome_provider'
+  | 'provider_survey'
   | 'waitlist_spot_available'
   | 'invoice_sent'
   | 'invoice_paid'

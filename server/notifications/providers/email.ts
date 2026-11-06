@@ -41,6 +41,7 @@ function getSenderForType(type?: string): { email: string; name: string } {
     'referral_completed', 'referral_welcome', 'trial_started',
     'waitlist_spot_available', 'subscription_upgraded', 'subscription_updated',
     'subscription_payment_restored', 'subscription_renewed',
+    'provider_survey',
   ];
   if (infoTypes.includes(type)) return EMAIL_SENDERS.info;
 

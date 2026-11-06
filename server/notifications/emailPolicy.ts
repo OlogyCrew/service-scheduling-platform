@@ -48,6 +48,7 @@ export const EMAIL_CATEGORY_RULES: Record<NotificationType, EmailRule> = {
   review_reminder: { category: "marketingEmail" },
   welcome_customer: { category: "marketingEmail" },
   welcome_provider: { category: "marketingEmail" },
+  provider_survey: { category: "marketingEmail" },
   trial_7_days: { category: "marketingEmail" },
   trial_3_days: { category: "marketingEmail" },
   trial_1_day: { category: "marketingEmail" },
