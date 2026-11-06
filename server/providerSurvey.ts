@@ -92,6 +92,10 @@ export async function sendProviderSurveyCampaign(campaignId: number) {
       isNull(users.deletedAt),
     ));
 
+  if (recipients.length === 0) {
+    throw new Error("No eligible recipients. Providers must have a valid email and opt in to marketing email before this survey can be sent.");
+  }
+
   await db.update(providerSurveyCampaigns).set({ status: "sending" }).where(eq(providerSurveyCampaigns.id, campaignId));
   let sent = 0;
   let failed = 0;
