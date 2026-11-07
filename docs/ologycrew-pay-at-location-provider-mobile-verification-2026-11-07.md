@@ -1,7 +1,7 @@
 # OlogyCrew Pay-at-Location — Provider Mobile Verification
 
 **Date:** November 7, 2026  
-**Mode:** Read-only verification  
+**Mode:** Historical read-only review plus separate isolated synthetic walkthrough<br>
 **Production changes:** None  
 **Published application version:** `7b259056`
 
@@ -76,7 +76,7 @@ No role switch, provider activation, setting save, payment confirmation, waiver,
 
 The owner also supplied five authenticated landscape screenshots (`IMG_0040.png` through `IMG_0044.png`) at 2556 × 1179 pixels. The Pay-at-Location heading, disabled switch, customer-instructions area, eligible-service rows, and Save button remain readable and inside the content area. The fixed bottom navigation remains visible and does not cover the Pay-at-Location controls shown in the screenshots. In the lower Service options screenshot, the fixed navigation covers part of the card’s lower content while the page is scrolled; this is a general sticky-navigation observation, not a Pay-at-Location control defect. The screenshots provide landscape evidence but do not establish an exact 768px CSS viewport.
 
-The source implementation does contain the expected labels and authorization boundaries, including provider-only settings and provider/admin-only payment confirmation and waiver operations, but source inspection is not a substitute for an authenticated mobile rendering test.
+The source contains the settings labels and backend provider/admin confirmation and waiver boundaries. A subsequent genuinely isolated visual review found no client confirmation/waiver controls wired to those endpoints; backend availability must not be interpreted as provider UI completeness. See the isolated walkthrough findings below.
 
 ## Final assessment
 
@@ -91,7 +91,7 @@ The source implementation does contain the expected labels and authorization bou
 | Provider-dashboard landscape review | **PASS — owner-supplied screenshots** |
 | Authenticated 768 × 1024 provider settings controls | **PASS — exact Chromium viewport; November 7, 2026 20:49 UTC** |
 | Mark as Paid / Waive automated tests | **PASS — see focused release-gate results below** |
-| Visual Mark as Paid / Waive on an isolated obligation | **PENDING — automated tests are not visual evidence** |
+| Visual Mark as Paid / Waive on an isolated obligation | **BLOCKED — actual client controls absent; provider offline history and customer settled-payment copy need correction** |
 | Stripe, payout, credential, and incident settings unchanged | **PASS / no action taken** |
 | Pilot provider selection or activation | **NOT PERFORMED** |
 
@@ -123,7 +123,7 @@ The database-backed walkthrough was rerun separately for the requested release g
 - Disabling provider Pay-at-Location settings did not remove the existing offline history.
 - Test cleanup completed without leaving synthetic accounts or obligations.
 
-This verifies the payment-action and audit behavior in the isolated database-backed test environment. No visual payment-action walkthrough was performed against a production or Chisolm Audio booking, and no production offline obligation was created.
+These earlier results verify automated database-backed behavior; they do not independently establish the separate-instance isolation or visual action evidence required for the final walkthrough. No visual payment-action walkthrough was performed against a production or Chisolm Audio booking, and no production offline obligation was created. The later separate-instance run is documented below.
 
 ## Exact authenticated tablet controls
 
@@ -133,6 +133,18 @@ Only accordion expansion and scrolling were performed. Non-GET requests were blo
 
 Full scoped evidence and limitations are recorded in `docs/ologycrew-authenticated-tablet-controls-verification-2026-11-07.md`; the screenshot and machine-readable measurements are under `/home/ubuntu/verification/ologycrew-tablet-2026-11-07/`.
 
+## Genuinely isolated walkthrough — November 7, 2026 21:04–21:10 UTC
+
+The mandatory isolation gate passed before seed: separate MariaDB 10.11.14 at namespace-loopback `127.0.0.1:3317`, database `ologycrew_offline_visual_20261107`, separate data directory, 66 empty schema-only tables, explicit scrubbed environments, no production credentials or rows, no external network route, no live webhooks or schedules. Synthetic associated and unrelated provider users were non-admin. No production or shared-development database was accessed.
+
+Real HTTP preflight passed 9/9 check groups. The complete API walkthrough passed 13/13 groups, including real login/session checks, a full $101 cash confirmation, a separate full $202 waiver with reason, complete committed audits, customer and unrelated-provider denials, duplicate/cross-transition prevention, actual audit-INSERT failure rolling back both transitions, and preserved history after disabling the synthetic settings. These executions overlap and are not 22 distinct regression tests.
+
+Actual provider/customer UI was captured before and after at 768 × 1024. The provider client has no Mark as Paid/Waive controls wired to the endpoints; provider details read only online payments and still display “No payment recorded yet” after offline settlement. Customer status changes to Paid/Waived but still labels the original amount as due and displays “Payment Required.” No substitute UI was created; successful settlements were API calls, not visual button actions. **The visual release gate is blocked, not passed.**
+
+The isolated app, DB and namespace holder were stopped. Synthetic plaintext passwords and fresh JWT/TLS secrets were removed; zero triggers, events, online payments, Stripe SDK requests or notifications remained. Both synthetic provider settings were disabled and eligibility cleared. Synthetic ledger/audit history was preserved offline instead of deleted. Production settings and protected accounts were not accessed or modified; earlier production-state snapshots above are historical, not new checks from this run.
+
+Complete evidence, raw committed audit records, screenshots, limitations and required V1–V3 UI corrections are in `docs/ologycrew-isolated-pay-at-location-walkthrough-report-2026-11-07.md` and `/home/ubuntu/verification/ologycrew-isolated-walkthrough-2026-11-07/evidence/`.
+
 ## Recommended next step
 
-Complete the visual Mark as Paid and Waive walkthrough on separate isolated non-production obligations, including audit records. Then present the provider guide for owner review before any guide publication. Keep production Pay-at-Location disabled; pilot selection and activation remain separate owner approvals.
+Authorize narrowly scoped unpublished UI remediation for the missing settlement controls, provider offline-history rendering, and customer outstanding-balance/payment-required copy; then repeat the visual actions in the separate synthetic database and inspect both audits. Keep the provider guide unpublished and production Pay-at-Location disabled. Deployment, guide publication, pilot selection and activation remain separate owner approvals.
