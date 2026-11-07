@@ -89,7 +89,9 @@ The source implementation does contain the expected labels and authorization bou
 | Authenticated provider dashboard and settings labels | **PASS** |
 | Provider-dashboard mobile settings review | **PASS — owner-supplied iPhone screenshots** |
 | Provider-dashboard landscape review | **PASS — owner-supplied screenshots** |
-| Mark as Paid / Waive on an offline obligation | **NOT VERIFIED — no offline obligation exists** |
+| Authenticated 768 × 1024 provider settings controls | **PASS — exact Chromium viewport; November 7, 2026 20:49 UTC** |
+| Mark as Paid / Waive automated tests | **PASS — see focused release-gate results below** |
+| Visual Mark as Paid / Waive on an isolated obligation | **PENDING — automated tests are not visual evidence** |
 | Stripe, payout, credential, and incident settings unchanged | **PASS / no action taken** |
 | Pilot provider selection or activation | **NOT PERFORMED** |
 
@@ -123,6 +125,14 @@ The database-backed walkthrough was rerun separately for the requested release g
 
 This verifies the payment-action and audit behavior in the isolated database-backed test environment. No visual payment-action walkthrough was performed against a production or Chisolm Audio booking, and no production offline obligation was created.
 
+## Exact authenticated tablet controls
+
+The November 7, 2026 final tablet review used the owner's authenticated Chisolm Audio provider workspace on the published application, in a sandbox Chromium viewport measured at exactly **768 × 1024 CSS pixels**. Authentication and provider association were confirmed through read-only application queries, not mocked UI data. The screenshot includes the expanded Pricing & payments heading, Pay at Location, disabled Accept Pay at Location switch, empty customer instructions, all four unchecked services, and the visible Save button. All reviewed controls fit within the viewport; document content and scroll widths both measured 753px, with no horizontal overflow. This is responsive Chromium evidence, not native iPad/Safari emulation.
+
+Only accordion expansion and scrolling were performed. Non-GET requests were blocked during capture, Save was not pressed, and no setting or obligation was created. Read-only production checks confirmed zero provider settings, zero enabled providers, zero eligibility rows, and zero offline obligations; protected provider connection/status fields remained unchanged. No financial or incident configuration was modified. The provider guide remains unpublished.
+
+Full scoped evidence and limitations are recorded in `docs/ologycrew-authenticated-tablet-controls-verification-2026-11-07.md`; the screenshot and machine-readable measurements are under `/home/ubuntu/verification/ologycrew-tablet-2026-11-07/`.
+
 ## Recommended next step
 
-Use a dedicated non-production provider account or an authenticated provider preview session. Verify the seven exact labels at 390px and 768px, inspect eligible-service selection and settings controls, and capture screenshots without saving any production setting. Only after that review should the provider guide be considered for publication. Pilot activation remains a separate owner approval.
+Complete the visual Mark as Paid and Waive walkthrough on separate isolated non-production obligations, including audit records. Then present the provider guide for owner review before any guide publication. Keep production Pay-at-Location disabled; pilot selection and activation remain separate owner approvals.
