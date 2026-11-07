@@ -9,6 +9,7 @@ import { sendNotification } from "./notifications";
 import { customerHasFeature, resolveCustomerEntitlement } from "../shared/entitlements";
 import { isStripeResourceMissing, requireStripeSubscriptionPeriodEnd } from "./stripeSubscriptionLifecycle";
 import { createSubscriptionInAppNotice } from "./subscriptionNotifications";
+import { assertPaymentActorCanInitiate } from "./paymentAuthorization";
 
 const stripe = new Stripe(ENV.stripeSecretKey, { apiVersion: "2026-01-28.clover" as any });
 
@@ -121,6 +122,7 @@ export const customerSubscriptionRouter = router({
       withTrial: z.boolean().default(true),
     }))
     .mutation(async ({ ctx, input }) => {
+      assertPaymentActorCanInitiate(ctx.user, "customer_subscription");
       const existingSubForCheck = await db.getCustomerSubscription(ctx.user.id);
       if (existingSubForCheck?.stripeSubscriptionId) {
         // Reuse every retained live Stripe subscription instead of creating a duplicate.

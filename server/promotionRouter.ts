@@ -7,6 +7,7 @@ import { ENV } from "./_core/env";
 import * as promotionDb from "./db/promotions";
 import { getProviderByUserId } from "./db/providers";
 import { getServiceById } from "./db/services";
+import { assertProviderPaymentActor } from "./paymentAuthorization";
 
 const stripe = new Stripe(ENV.stripeSecretKey, { apiVersion: "2025-04-30.basil" as any });
 
@@ -25,6 +26,7 @@ export const promotionRouter = router({
     .mutation(async ({ ctx, input }) => {
       const provider = await getProviderByUserId(ctx.user.id);
       if (!provider) throw new TRPCError({ code: "FORBIDDEN", message: "Provider account required" });
+      assertProviderPaymentActor(ctx.user, provider);
 
       let serviceContext = "";
       if (input.serviceId) {
@@ -101,6 +103,7 @@ Be specific, action-oriented, and highlight what makes this service special. Do 
     .mutation(async ({ ctx, input }) => {
       const provider = await getProviderByUserId(ctx.user.id);
       if (!provider) throw new TRPCError({ code: "FORBIDDEN", message: "Provider account required" });
+      assertProviderPaymentActor(ctx.user, provider);
 
       const tierInfo = TIER_PRICING[input.tier];
       if (!tierInfo) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid tier" });

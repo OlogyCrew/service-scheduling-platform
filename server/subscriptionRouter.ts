@@ -11,6 +11,7 @@ import { TRIAL_DAYS, providerHasFeature, resolveProviderEntitlement } from "../s
 import { isStripeResourceMissing, requireStripeSubscriptionPeriodEnd } from "./stripeSubscriptionLifecycle";
 import { getSubscriptionAnalytics as getEffectiveSubscriptionAnalytics } from "./db/payments";
 import { createSubscriptionInAppNotice } from "./subscriptionNotifications";
+import { assertProviderPaymentActor } from "./paymentAuthorization";
 
 const stripe = new Stripe(ENV.stripeSecretKey, {
   apiVersion: "2026-01-28.clover" as any,
@@ -287,6 +288,7 @@ export const subscriptionRouter = router({
       if (!provider) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider to subscribe" });
       }
+      assertProviderPaymentActor(ctx.user, provider);
 
       const currentSub = await db.getProviderSubscription(provider.id);
 

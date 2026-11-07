@@ -5,7 +5,7 @@ import Stripe from "stripe";
 import { ENV } from "./_core/env";
 import * as db from "./db";
 import { getReferralCreditBalance, spendReferralCredits } from "./db/referrals";
-import { providerHasFeature } from "@shared/entitlements";
+import { assertPaymentActorCanInitiate, assertProviderCanCollectPayments } from "./paymentAuthorization";
 
 const stripe = new Stripe(ENV.stripeSecretKey, {
   apiVersion: "2026-01-28.clover" as any,
@@ -56,6 +56,7 @@ export const stripeRouter = router({
       const booking = await db.getBookingById(input.bookingId);
       if (!booking) throw new Error("Booking not found");
       if (booking.customerId !== ctx.user.id) throw new Error("Unauthorized");
+      assertPaymentActorCanInitiate(ctx.user, "booking");
 
       const service = await db.getServiceById(booking.serviceId);
       const provider = await db.getProviderById(booking.providerId);
@@ -67,13 +68,6 @@ export const stripeRouter = router({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "This booking payment has already been completed. No additional charge was created.",
-        });
-      }
-
-      if (provider.isActive === false || provider.deletedAt) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "This provider is not currently accepting bookings or payments through OlogyCrew. No charge was created.",
         });
       }
 
@@ -98,18 +92,10 @@ export const stripeRouter = router({
 
       const providerTier = await db.getProviderTier(provider.id);
       const providerSubscription = await db.getProviderSubscription(provider.id);
-      const hasActivePaidSubscription = providerSubscription?.status === "active";
-      if (!hasActivePaidSubscription || !providerHasFeature(providerTier, "paymentCollection")) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "This provider must have an active paid subscription before accepting payments through OlogyCrew. No charge was created.",
-        });
-      }
-      if (!provider.stripeAccountId || !provider.payoutEnabled) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "This provider has not finished payment setup. Your booking is saved, but no charge was created.",
-        });
+      assertProviderCanCollectPayments({ provider, tier: providerTier, subscription: providerSubscription });
+      const destinationAccountId = provider.stripeAccountId;
+      if (!destinationAccountId) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Provider payment setup is incomplete." });
       }
 
       // Determine amount to charge (deposit or full amount)
@@ -245,9 +231,9 @@ export const stripeRouter = router({
 
       // Every non-demo booking charge must settle to an entitled, payout-ready provider.
       sessionOptions.payment_intent_data = {
-        application_fee_amount: platformFeeInCents,
-        transfer_data: {
-          destination: provider.stripeAccountId,
+          application_fee_amount: platformFeeInCents,
+          transfer_data: {
+          destination: destinationAccountId,
         },
         metadata: {
           bookingId: booking.id.toString(),

@@ -9,6 +9,7 @@ import { getUserById } from "./db/users";
 import { getProviderTier } from "./db/payments";
 import { providerHasFeature } from "@shared/entitlements";
 import { queueCrmInvoiceProjection } from "./crm/sourceHooks";
+import { assertPaymentActorCanInitiate } from "./paymentAuthorization";
 
 // Helper: check if provider has paid tier (Basic or Premium)
 async function requirePaidTier(providerId: number) {
@@ -336,6 +337,7 @@ export const invoiceRouter = router({
       const invoice = await invoiceDb.getInvoiceById(input.invoiceId);
       if (!invoice) throw new TRPCError({ code: "NOT_FOUND" });
       if (invoice.customerId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      assertPaymentActorCanInitiate(ctx.user, "invoice");
       if (invoice.status === "paid" || invoice.status === "cancelled") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice already " + invoice.status });
       }
