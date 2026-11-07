@@ -49,12 +49,12 @@ This review did not deploy or publish the application, enable any provider, chan
 | Production client/server build (`pnpm build`) | Passed; only existing chunk-size and toolchain warnings |
 | Focused Stage 4/booking/payment tests | 9 files, 76 tests passed |
 | Database-backed Stage 4 lifecycle suite | 1 file, 4 tests passed |
-| Full regression suite | 229 files; 2,312/2,313 passed on the final run; one unrelated external Twilio authentication test timed out under the parallel suite and passed 5/5 in isolation |
+| Full regression suite | **232 files, 2,321 tests passed** in the serial rerun, including all 5 Twilio validation tests |
 | Test cleanup | 26 synthetic test accounts and 8 test providers removed |
 | Production read-only smoke test | Passed; no Stripe, notification, or write side effects |
 | Production database state | Three Stage 4 tables present, all empty; provider settings disabled |
 
-The test runner still reports the known non-failing Vite close-time warning after successful completion. The full-suite Twilio timeout is an external-network timing issue: the isolated `server/twilio-validate.test.ts` run passed all five tests and verified the account as active. No Twilio code was changed. This does not affect Stage 4 tests.
+The serial full-suite run completed successfully. The runner still reports the known non-failing Vite close-time warning after successful completion; all tests closed successfully and test cleanup removed the synthetic records. No Twilio code was changed.
 
 ## Six deployment-readiness requirements
 
@@ -93,7 +93,7 @@ The remediation tests cover audit-write failure/rollback, successful audit inser
 
 ### 5. Integration testing — **PASS**
 
-The code and focused tests cover online-default selection, provider/service eligibility, direct booking, quote conversion, recurring bookings, multi-day bookings, one parent-level obligation, duplicate-safe creation, stale/duplicate settlement, customer read-only status, and Stripe-free source boundaries. The Stage 4-focused suite passed in full; the overall suite had one unrelated external Twilio timeout, which passed when isolated.
+The code and focused tests cover online-default selection, provider/service eligibility, direct booking, quote conversion, recurring bookings, multi-day bookings, one parent-level obligation, duplicate-safe creation, stale/duplicate settlement, customer read-only status, and Stripe-free source boundaries. The Stage 4-focused suite and complete serial regression suite passed in full.
 
 The isolated database-backed suite exercises a real synthetic offline obligation across the required lifecycle paths:
 
