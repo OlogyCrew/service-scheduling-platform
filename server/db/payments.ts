@@ -109,6 +109,15 @@ export async function getPaymentByStripePaymentIntentId(paymentIntentId: string)
   return payment;
 }
 
+export function resolveWebhookPaymentStatus(
+  currentStatus: string | null | undefined,
+  incomingStatus: "pending" | "authorized" | "captured" | "failed" | "cancelled",
+): string {
+  if (currentStatus === "refunded") return "refunded";
+  if (currentStatus === "captured" && incomingStatus === "failed") return "captured";
+  return incomingStatus;
+}
+
 export async function updatePaymentRefund(paymentId: number, data: {
   status: string;
   refundAmount: string;

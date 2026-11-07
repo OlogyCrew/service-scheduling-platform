@@ -1,0 +1,1 @@
+ALTER TABLE `stripe_webhook_events` ADD `leaseToken` varchar(64) DEFAULT '' NOT NULL;

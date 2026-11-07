@@ -1106,6 +1106,48 @@ export const auditLog = mysqlTable("audit_log", {
 export type AuditLogEntry = typeof auditLog.$inferSelect;
 export type InsertAuditLogEntry = typeof auditLog.$inferInsert;
 
+/**
+ * Durable Stripe webhook delivery ledger. The Stripe event ID is unique so
+ * retries and concurrent deliveries cannot repeat financial side effects.
+ */
+export const stripeWebhookEvents = mysqlTable("stripe_webhook_events", {
+  id: int("id").autoincrement().primaryKey(),
+  stripeEventId: varchar("stripeEventId", { length: 255 }).notNull().unique(),
+  eventType: varchar("eventType", { length: 120 }).notNull(),
+  accountId: varchar("accountId", { length: 255 }),
+  livemode: boolean("livemode").notNull(),
+  apiVersion: varchar("apiVersion", { length: 50 }),
+  paymentIntentId: varchar("paymentIntentId", { length: 255 }),
+  checkoutSessionId: varchar("checkoutSessionId", { length: 255 }),
+  chargeId: varchar("chargeId", { length: 255 }),
+  invoiceId: varchar("invoiceId", { length: 255 }),
+  subscriptionId: varchar("subscriptionId", { length: 255 }),
+  bookingId: int("bookingId"),
+  status: mysqlEnum("status", ["received", "processing", "processed", "failed"]).notNull().default("received"),
+  attemptCount: int("attemptCount").notNull().default(0),
+  leaseToken: varchar("leaseToken", { length: 64 }).notNull().default(""),
+  firstReceivedAt: timestamp("firstReceivedAt").defaultNow().notNull(),
+  lastAttemptAt: timestamp("lastAttemptAt"),
+  processedAt: timestamp("processedAt"),
+  nextRetryAt: timestamp("nextRetryAt"),
+  lastError: text("lastError"),
+  metadata: text("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("stripe_webhook_event_type_idx").on(table.eventType),
+  index("stripe_webhook_account_idx").on(table.accountId),
+  index("stripe_webhook_payment_intent_idx").on(table.paymentIntentId),
+  index("stripe_webhook_checkout_idx").on(table.checkoutSessionId),
+  index("stripe_webhook_charge_idx").on(table.chargeId),
+  index("stripe_webhook_invoice_idx").on(table.invoiceId),
+  index("stripe_webhook_subscription_idx").on(table.subscriptionId),
+  index("stripe_webhook_booking_idx").on(table.bookingId),
+  index("stripe_webhook_status_retry_idx").on(table.status, table.nextRetryAt),
+]);
+export type StripeWebhookEvent = typeof stripeWebhookEvents.$inferSelect;
+export type InsertStripeWebhookEvent = typeof stripeWebhookEvents.$inferInsert;
+
 
 /**
  * Partner revenue split transfers — tracks 40% transfers to partner's Stripe account

@@ -14,6 +14,11 @@ import { createSubscriptionInAppNotice } from "./subscriptionNotifications";
 import { queueCrmBookingProjection, queueCrmInvoiceProjection } from "./crm/sourceHooks";
 import { fulfillReferralAndNotify } from "./referralFulfillment";
 import { dollarsToCents } from "./referralRewardPolicy";
+import {
+  claimStripeWebhookEvent,
+  markStripeWebhookEventFailed,
+  markStripeWebhookEventProcessed,
+} from "./db/stripeWebhookEvents";
 const stripe = new Stripe(ENV.stripeSecretKey, {
   apiVersion: "2026-01-28.clover",
 });
@@ -22,6 +27,40 @@ export function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null
   const subscription = invoice.parent?.subscription_details?.subscription ?? (invoice as any).subscription;
   if (!subscription) return null;
   return typeof subscription === "string" ? subscription : subscription.id;
+}
+
+function getStripeObjectId(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "id" in value && typeof (value as any).id === "string") {
+    return (value as any).id;
+  }
+  return null;
+}
+
+function getWebhookLedgerInput(event: Stripe.Event) {
+  const object = event.data.object as any;
+  const metadata = object?.metadata && typeof object.metadata === "object" ? object.metadata : {};
+  const parsedBookingId = Number(metadata.bookingId);
+
+  return {
+    stripeEventId: event.id,
+    eventType: event.type,
+    accountId: event.account ?? null,
+    livemode: event.livemode,
+    apiVersion: event.api_version ?? null,
+    paymentIntentId: getStripeObjectId(object?.payment_intent) || (event.type.startsWith("payment_intent.") ? object?.id : null),
+    checkoutSessionId: event.type === "checkout.session.completed" ? object?.id : null,
+    chargeId: getStripeObjectId(object?.charge) || (event.type.startsWith("charge.") ? object?.id : null),
+    invoiceId: getStripeObjectId(object?.invoice) || (event.type.startsWith("invoice.") ? object?.id : null),
+    subscriptionId: getStripeObjectId(object?.subscription) || (event.type.startsWith("customer.subscription.") ? object?.id : null),
+    bookingId: Number.isInteger(parsedBookingId) && parsedBookingId > 0 ? parsedBookingId : null,
+    metadata: {
+      type: typeof metadata.type === "string" ? metadata.type : null,
+      paymentType: typeof metadata.paymentType === "string" ? metadata.paymentType : null,
+      providerId: typeof metadata.providerId === "string" ? metadata.providerId : null,
+      userId: typeof metadata.userId === "string" ? metadata.userId : null,
+    },
+  };
 }
 
 async function getSubscriptionNotificationContext(subscription: Stripe.Subscription) {
@@ -89,6 +128,21 @@ export async function handleStripeWebhook(req: Request, res: Response) {
 
   console.log("[Stripe Webhook] Event received:", event.type);
 
+  let claim;
+  try {
+    claim = await claimStripeWebhookEvent(getWebhookLedgerInput(event));
+  } catch (error) {
+    console.error("[Stripe Webhook] Ledger claim failed:", error);
+    return res.status(500).send("Webhook ledger unavailable");
+  }
+
+  if (claim.action === "duplicate") {
+    return res.json({ received: true, duplicate: true });
+  }
+  if (claim.action === "in_progress") {
+    return res.status(409).json({ received: false, retryable: true });
+  }
+
   try {
     switch (event.type) {
       case "checkout.session.completed": {
@@ -144,9 +198,15 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
     }
 
+    await markStripeWebhookEventProcessed(claim.event.id, claim.event.leaseToken);
     res.json({ received: true });
   } catch (error: any) {
     console.error("[Stripe Webhook] Error processing event:", error);
+    try {
+      await markStripeWebhookEventFailed(claim.event.id, claim.event.leaseToken, error);
+    } catch (ledgerError) {
+      console.error("[Stripe Webhook] Failed to record retry state:", ledgerError);
+    }
     res.status(500).send(`Webhook processing error: ${error.message}`);
   }
 }

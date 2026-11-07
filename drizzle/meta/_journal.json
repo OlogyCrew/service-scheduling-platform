@@ -477,6 +477,20 @@
       "when": 1793960550840,
       "tag": "0067_nervous_namora",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "5",
+      "when": 1794037423513,
+      "tag": "0068_blushing_katie_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "5",
+      "when": 1794037632194,
+      "tag": "0069_curious_tarantula",
+      "breakpoints": true
     }
   ]
 }

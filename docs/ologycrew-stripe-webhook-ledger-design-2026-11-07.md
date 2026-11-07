@@ -94,6 +94,14 @@ A webhook event must never be marked `processed` if a required financial side ef
 8. Run focused tests, TypeScript validation, production build, and the full regression suite.
 9. Save an unpublished checkpoint. Do not deploy or publish without explicit approval.
 
+## Rollback plan before publication
+
+The safest rollback is an application rollback to the prior checkpoint while retaining the additive ledger tables. This removes the webhook wrapper from the running application without touching existing payments, bookings, subscriptions, Stripe settings, or evidence. Retaining the empty-or-populated ledger is preferred because it preserves the event history needed for investigation and reconciliation.
+
+If the implementation must be removed from the database, first stop webhook processing, export and preserve the ledger rows, confirm that no event is actively processing, and verify that the prior application version does not reference the table. Only then may an administrator execute `DROP TABLE stripe_webhook_events`; this is a separate, explicitly approved destructive action and is not part of the normal rollback. The generated migrations `0068_blushing_katie_power.sql` and `0069_curious_tarantula.sql` are additive and have no automatic down migration.
+
+After application rollback, replay a signed Stripe test event in test mode and confirm the pre-Stage-2 response path, then verify that existing payment, booking, subscription, and incident records are unchanged. No production Stripe event should be manually replayed during rollback without Stripe-case coordination and a separate approval.
+
 ## Acceptance tests
 
 - The same Stripe event ID delivered twice produces one business side effect.
