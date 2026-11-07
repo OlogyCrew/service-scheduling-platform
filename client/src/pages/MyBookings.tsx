@@ -1370,6 +1370,12 @@ function CustomerQuotesSection() {
   const { data: quotes, isLoading } = trpc.provider.myQuotes.useQuery();
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
+  const [quotePaymentChoices, setQuotePaymentChoices] = useState<Record<number, "online" | "pay_at_location">>({});
+  const selectedQuote = quotes?.find((quote: any) => quotePaymentChoices[quote.id] === "pay_at_location");
+  const { data: selectedQuoteOffline } = trpc.offlinePayment.getProviderSettingsForService.useQuery(
+    { providerId: selectedQuote?.providerId || 0, serviceId: selectedQuote?.serviceId || 0 },
+    { enabled: !!selectedQuote?.providerId && !!selectedQuote?.serviceId }
+  );
 
   const updateStatus = trpc.provider.updateQuoteStatus.useMutation({
     onSuccess: (data) => {
@@ -1480,9 +1486,16 @@ function CustomerQuotesSection() {
                     </p>
                   )}
                   <div className="flex gap-2 mt-3">
+                    <label className="flex items-center gap-2 text-xs">
+                      <input type="radio" name={`customer-quote-payment-${quote.id}`} checked={(quotePaymentChoices[quote.id] || "online") === "online"} onChange={() => setQuotePaymentChoices((v) => ({ ...v, [quote.id]: "online" }))} /> Pay online
+                    </label>
+                    <label className="flex items-center gap-2 text-xs">
+                      <input type="radio" name={`customer-quote-payment-${quote.id}`} checked={quotePaymentChoices[quote.id] === "pay_at_location"} onChange={() => setQuotePaymentChoices((v) => ({ ...v, [quote.id]: "pay_at_location" }))} disabled={!!selectedQuoteOffline && !selectedQuoteOffline.enabled && selectedQuote?.id === quote.id} /> Pay at Location
+                    </label>
+                    {quotePaymentChoices[quote.id] === "pay_at_location" && selectedQuote?.id === quote.id && selectedQuoteOffline?.enabled && <span className="text-xs text-muted-foreground">No card is charged. {selectedQuoteOffline.instructions || "Follow the provider's instructions."}</span>}
                     <Button
                       size="sm"
-                      onClick={() => updateStatus.mutate({ quoteId: quote.id, status: "accepted" })}
+                      onClick={() => updateStatus.mutate({ quoteId: quote.id, status: "accepted", paymentMethod: quotePaymentChoices[quote.id] || "online" })}
                       disabled={updateStatus.isPending}
                     >
                       <CheckCircle2 className="h-4 w-4 mr-1" />

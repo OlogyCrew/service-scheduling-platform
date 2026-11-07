@@ -8,6 +8,14 @@ import { getDb } from "./connection";
 export const OFFLINE_METHODS = ["cash", "bank_transfer", "mobile_money", "other"] as const;
 export type OfflineMethod = typeof OFFLINE_METHODS[number];
 
+export async function assertPayAtLocationEligible(providerId: number, serviceId: number) {
+  const settings = await getProviderPayAtLocationSettings(providerId);
+  if (!settings.enabled || !settings.serviceIds.includes(serviceId)) {
+    throw new Error("Pay at Location is not available for this service.");
+  }
+  return settings;
+}
+
 export async function getProviderPayAtLocationSettings(providerId: number): Promise<{ providerId?: number; enabled: boolean; instructions: string | null; serviceIds: number[] }> {
   const db = await getDb(); if (!db) return { enabled: false, instructions: null, serviceIds: [] };
   const [settings] = await db.select().from(providerPayAtLocationSettings).where(eq(providerPayAtLocationSettings.providerId, providerId)).limit(1);
@@ -29,7 +37,16 @@ export async function updateProviderPayAtLocationSettings(providerId: number, in
 
 export async function createOfflinePayment(bookingId: number, originalAmountDue: string) {
   const db = await getDb(); if (!db) throw new Error("Database not available");
-  await db.insert(offlineBookingPayments).values({ bookingId, paymentMethod: "pay_at_location", originalAmountDue, status: "due" });
+  const existing = await db.select().from(offlineBookingPayments).where(eq(offlineBookingPayments.bookingId, bookingId)).limit(1);
+  if (!existing[0]) {
+    try {
+      await db.insert(offlineBookingPayments).values({ bookingId, paymentMethod: "pay_at_location", originalAmountDue, status: "due" });
+    } catch (error) {
+      // A retry racing the unique bookingId constraint is already satisfied.
+      const afterRace = await db.select().from(offlineBookingPayments).where(eq(offlineBookingPayments.bookingId, bookingId)).limit(1);
+      if (!afterRace[0]) throw error;
+    }
+  }
   return getOfflinePaymentForBooking(bookingId);
 }
 export async function getOfflinePaymentForBooking(bookingId: number) {

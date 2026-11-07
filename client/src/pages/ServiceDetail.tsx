@@ -160,6 +160,11 @@ export default function ServiceDetail() {
     { enabled: !!service }
   );
   const canAcceptPlatformPayments = !!(provider as any)?.canAcceptPlatformPayments;
+  const { data: payAtLocationSettings } = trpc.offlinePayment.getProviderSettingsForService.useQuery(
+    { providerId: service?.providerId || 0, serviceId: service?.id || 0 },
+    { enabled: !!service?.providerId && !!service?.id }
+  );
+  const canPayAtLocation = !!payAtLocationSettings?.enabled;
   const { data: reviews } = trpc.review.listByProvider.useQuery(
     { providerId: service?.providerId || 0 },
     { enabled: !!service }
@@ -688,6 +693,7 @@ export default function ServiceDetail() {
         venueName: (multiEffectiveLocType === "fixed_location" && bookingForm.venueName) ? bookingForm.venueName : undefined,
         customerNotes: bookingForm.notes || undefined,
         bookingSource: "direct",
+        paymentMethod: paymentChoice === "pay_at_location" ? "pay_at_location" : "online",
       });
       return;
     }
@@ -723,6 +729,7 @@ export default function ServiceDetail() {
         venueName: (recurEffectiveLocType === "fixed_location" && bookingForm.venueName) ? bookingForm.venueName : undefined,
         customerNotes: bookingForm.notes || undefined,
         bookingSource: "direct",
+        paymentMethod: paymentChoice === "pay_at_location" ? "pay_at_location" : "online",
       });
       return;
     }
@@ -2375,6 +2382,11 @@ export default function ServiceDetail() {
                             </p>
                           </div>
                         </div>
+                        {paymentChoice === "pay_at_location" && canPayAtLocation && (
+                          <p className="text-xs text-muted-foreground rounded-md bg-muted p-2">
+                            No card is charged online. Pay the provider at the location; {payAtLocationSettings?.instructions || "follow the provider's payment instructions."}
+                          </p>
+                        )}
                         <Button
                           onClick={handleBooking}
                           disabled={isBookingPending || isBookingSuccess}
@@ -2411,7 +2423,7 @@ export default function ServiceDetail() {
                             <p className="text-sm font-medium">Pay Now</p>
                             <p className="text-xs text-muted-foreground">Secure your spot instantly</p>
                           </button>
-                          <button
+                          {canPayAtLocation && <button
                             type="button"
                             onClick={() => setPaymentChoice("pay_at_location")}
                             className={`p-3 rounded-lg border-2 text-left transition-all ${
@@ -2423,7 +2435,7 @@ export default function ServiceDetail() {
                             <MapPin className={`h-5 w-5 mb-1 ${paymentChoice === "pay_at_location" ? "text-primary" : "text-muted-foreground"}`} />
                             <p className="text-sm font-medium">Pay at Location</p>
                             <p className="text-xs text-muted-foreground">Pay the provider in person</p>
-                          </button>
+                          </button>}
                           <button
                             type="button"
                             onClick={() => setPaymentChoice("pay_after_confirmation")}

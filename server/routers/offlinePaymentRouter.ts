@@ -29,6 +29,14 @@ export const offlinePaymentRouter = router({
     if (!provider) throw new TRPCError({ code: "FORBIDDEN", message: "Provider access required" });
     return db.getProviderPayAtLocationSettings(provider.id);
   }),
+  getProviderSettingsForService: protectedProcedure
+    .input(z.object({ providerId: z.number().int().positive(), serviceId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const settings = await db.getProviderPayAtLocationSettings(input.providerId);
+      return settings.enabled && settings.serviceIds.includes(input.serviceId)
+        ? { enabled: true, instructions: settings.instructions }
+        : { enabled: false, instructions: null };
+    }),
 
   updateProviderSettings: protectedProcedure
     .input(z.object({ enabled: z.boolean(), instructions: z.string().max(2000).nullable().optional(), serviceIds: z.array(z.number().int().positive()).max(100) }))

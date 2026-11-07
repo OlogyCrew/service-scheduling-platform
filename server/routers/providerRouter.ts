@@ -1009,6 +1009,7 @@ export const providerRouter = router({
       quoteId: z.number(),
       status: z.enum(["accepted", "declined"]),
       reason: z.string().optional(),
+      paymentMethod: z.enum(["online", "pay_at_location"]).default("online"),
     }))
     .mutation(async ({ ctx, input }) => {
       const quote = await db.getQuoteById(input.quoteId);
@@ -1054,6 +1055,10 @@ export const providerRouter = router({
           if (!providerUser || providerUser.deletedAt || !category?.isActive) {
             throw new TRPCError({ code: "NOT_FOUND", message: "This quoted service is no longer available." });
           }
+          if (input.paymentMethod === "pay_at_location") {
+            try { await db.assertPayAtLocationEligible(quote.providerId, service.id); }
+            catch (error) { throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Pay at Location is not available for this service." }); }
+          }
 
           const bookingNumber = `OC-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
           const subtotal = parseFloat(quote.quotedAmount).toFixed(2);
@@ -1098,6 +1103,7 @@ export const providerRouter = router({
             remainingAmount: totalAmount,
           }, isGroupClass: Boolean(service.isGroupClass), maxCapacity: service.maxCapacity || 1, quoteId: quote.id });
 
+          if (input.paymentMethod === "pay_at_location") await db.createOfflinePayment(bookingId, totalAmount);
           queueCrmQuoteProjection(quote.id);
           queueCrmBookingProjection(bookingId);
           console.log(`[Quote] Auto-created booking #${bookingNumber} from quote #${quote.id}`);

@@ -317,7 +317,7 @@ export {
 } from "./db/reviews";
 
 export {
-  getProviderPayAtLocationSettings, updateProviderPayAtLocationSettings,
+  getProviderPayAtLocationSettings, assertPayAtLocationEligible, updateProviderPayAtLocationSettings,
   createOfflinePayment, getOfflinePaymentForBooking, listOutstandingOfflinePayments,
   transitionOfflinePayment, OFFLINE_METHODS,
 } from "./db/offlinePayments";

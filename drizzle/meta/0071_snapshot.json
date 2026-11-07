@@ -5837,8 +5837,8 @@
         }
       },
       "foreignKeys": {
-        "provider_pay_at_location_services_providerId_service_providers_id_fk": {
-          "name": "provider_pay_at_location_services_providerId_service_providers_id_fk",
+        "provider_pay_location_services_provider_fk": {
+          "name": "provider_pay_location_services_provider_fk",
           "tableFrom": "provider_pay_at_location_services",
           "tableTo": "service_providers",
           "columnsFrom": [
@@ -5850,8 +5850,8 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "provider_pay_at_location_services_serviceId_services_id_fk": {
-          "name": "provider_pay_at_location_services_serviceId_services_id_fk",
+        "provider_pay_location_services_service_fk": {
+          "name": "provider_pay_location_services_service_fk",
           "tableFrom": "provider_pay_at_location_services",
           "tableTo": "services",
           "columnsFrom": [
@@ -5935,8 +5935,8 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "provider_pay_at_location_settings_providerId_service_providers_id_fk": {
-          "name": "provider_pay_at_location_settings_providerId_service_providers_id_fk",
+        "provider_pay_location_settings_provider_fk": {
+          "name": "provider_pay_location_settings_provider_fk",
           "tableFrom": "provider_pay_at_location_settings",
           "tableTo": "service_providers",
           "columnsFrom": [

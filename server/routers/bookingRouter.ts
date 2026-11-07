@@ -814,6 +814,7 @@ export const bookingRouter = router({
       venueName: z.string().optional(),
       customerNotes: z.string().optional(),
       bookingSource: z.enum(["direct", "embed_widget", "provider_page", "api"]).default("direct"),
+      paymentMethod: z.enum(["online", "pay_at_location"]).default("online"),
     }))
     .mutation(async ({ ctx, input }) => {
       const service = await db.getServiceById(input.serviceId);
@@ -829,6 +830,10 @@ export const bookingRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "The provider does not match this service." });
       }
       const providerId = service.providerId;
+      if (input.paymentMethod === "pay_at_location") {
+        try { await db.assertPayAtLocationEligible(providerId, service.id); }
+        catch (error) { throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Pay at Location is not available for this service." }); }
+      }
       const durationMinutes = service.durationMinutes || 60;
       const endTime = calculateBookingEndTime(input.startTime, durationMinutes);
 
@@ -962,6 +967,7 @@ export const bookingRouter = router({
       }
 
       const booking = await db.getBookingById(bookingId);
+      if (input.paymentMethod === "pay_at_location") await db.createOfflinePayment(bookingId, totalAmount);
       queueCrmBookingProjection(bookingId);
 
       // Send notification
@@ -1015,6 +1021,7 @@ export const bookingRouter = router({
       venueName: z.string().optional(),
       customerNotes: z.string().optional(),
       bookingSource: z.enum(["direct", "embed_widget", "provider_page", "api"]).default("direct"),
+      paymentMethod: z.enum(["online", "pay_at_location"]).default("online"),
     }))
     .mutation(async ({ ctx, input }) => {
       const service = await db.getServiceById(input.serviceId);
@@ -1030,6 +1037,10 @@ export const bookingRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "The provider does not match this service." });
       }
       const providerId = service.providerId;
+      if (input.paymentMethod === "pay_at_location") {
+        try { await db.assertPayAtLocationEligible(providerId, service.id); }
+        catch (error) { throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Pay at Location is not available for this service." }); }
+      }
       const durationMinutes = service.durationMinutes || 60;
       const endTime = calculateBookingEndTime(input.startTime, durationMinutes);
 
@@ -1187,6 +1198,7 @@ export const bookingRouter = router({
       }
 
       const booking = await db.getBookingById(bookingId);
+      if (input.paymentMethod === "pay_at_location") await db.createOfflinePayment(bookingId, totalAmount);
       queueCrmBookingProjection(bookingId);
 
       // Send notification
