@@ -12,6 +12,7 @@ import { isStripeResourceMissing, requireStripeSubscriptionPeriodEnd } from "./s
 import { getSubscriptionAnalytics as getEffectiveSubscriptionAnalytics } from "./db/payments";
 import { createSubscriptionInAppNotice } from "./subscriptionNotifications";
 import { assertProviderPaymentActor } from "./paymentAuthorization";
+import { assertPaymentVelocityAllowed, throwIfPaymentVelocityBlocked } from "./paymentVelocity";
 
 const stripe = new Stripe(ENV.stripeSecretKey, {
   apiVersion: "2026-01-28.clover" as any,
@@ -291,6 +292,17 @@ export const subscriptionRouter = router({
       assertProviderPaymentActor(ctx.user, provider);
 
       const currentSub = await db.getProviderSubscription(provider.id);
+      const velocity = await assertPaymentVelocityAllowed({
+        actorId: ctx.user.id,
+        subjects: [
+          { dimension: "account", key: String(ctx.user.id) },
+          { dimension: "email", key: ctx.user.email || `user:${ctx.user.id}` },
+          ...(currentSub?.stripeCustomerId ? [{ dimension: "stripe_customer" as const, key: currentSub.stripeCustomerId }] : []),
+          { dimension: "provider", key: String(provider.id) },
+          { dimension: "ip", key: ctx.req.ip || ctx.req.headers["x-forwarded-for"]?.toString().split(",")[0] || "unknown" },
+        ],
+      });
+      throwIfPaymentVelocityBlocked(velocity);
 
       // Reuse every retained live Stripe subscription instead of creating a duplicate.
       if (currentSub?.stripeSubscriptionId) {

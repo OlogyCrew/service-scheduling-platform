@@ -10,6 +10,7 @@ import { customerHasFeature, resolveCustomerEntitlement } from "../shared/entitl
 import { isStripeResourceMissing, requireStripeSubscriptionPeriodEnd } from "./stripeSubscriptionLifecycle";
 import { createSubscriptionInAppNotice } from "./subscriptionNotifications";
 import { assertPaymentActorCanInitiate } from "./paymentAuthorization";
+import { assertPaymentVelocityAllowed, throwIfPaymentVelocityBlocked } from "./paymentVelocity";
 
 const stripe = new Stripe(ENV.stripeSecretKey, { apiVersion: "2026-01-28.clover" as any });
 
@@ -124,6 +125,16 @@ export const customerSubscriptionRouter = router({
     .mutation(async ({ ctx, input }) => {
       assertPaymentActorCanInitiate(ctx.user, "customer_subscription");
       const existingSubForCheck = await db.getCustomerSubscription(ctx.user.id);
+      const velocity = await assertPaymentVelocityAllowed({
+        actorId: ctx.user.id,
+        subjects: [
+          { dimension: "account", key: String(ctx.user.id) },
+          { dimension: "email", key: ctx.user.email || `user:${ctx.user.id}` },
+          ...(existingSubForCheck?.stripeCustomerId ? [{ dimension: "stripe_customer" as const, key: existingSubForCheck.stripeCustomerId }] : []),
+          { dimension: "ip", key: ctx.req.ip || ctx.req.headers["x-forwarded-for"]?.toString().split(",")[0] || "unknown" },
+        ],
+      });
+      throwIfPaymentVelocityBlocked(velocity);
       if (existingSubForCheck?.stripeSubscriptionId) {
         // Reuse every retained live Stripe subscription instead of creating a duplicate.
         let stripeSub: Stripe.Subscription | null = null;

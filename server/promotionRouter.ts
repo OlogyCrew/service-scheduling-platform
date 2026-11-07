@@ -8,6 +8,7 @@ import * as promotionDb from "./db/promotions";
 import { getProviderByUserId } from "./db/providers";
 import { getServiceById } from "./db/services";
 import { assertProviderPaymentActor } from "./paymentAuthorization";
+import { assertPaymentVelocityAllowed, throwIfPaymentVelocityBlocked } from "./paymentVelocity";
 
 const stripe = new Stripe(ENV.stripeSecretKey, { apiVersion: "2025-04-30.basil" as any });
 
@@ -104,6 +105,16 @@ Be specific, action-oriented, and highlight what makes this service special. Do 
       const provider = await getProviderByUserId(ctx.user.id);
       if (!provider) throw new TRPCError({ code: "FORBIDDEN", message: "Provider account required" });
       assertProviderPaymentActor(ctx.user, provider);
+      const velocity = await assertPaymentVelocityAllowed({
+        actorId: ctx.user.id,
+        subjects: [
+          { dimension: "account", key: String(ctx.user.id) },
+          { dimension: "email", key: ctx.user.email || `user:${ctx.user.id}` },
+          { dimension: "provider", key: String(provider.id) },
+          { dimension: "ip", key: ctx.req.ip || ctx.req.headers["x-forwarded-for"]?.toString().split(",")[0] || "unknown" },
+        ],
+      });
+      throwIfPaymentVelocityBlocked(velocity);
 
       const tierInfo = TIER_PRICING[input.tier];
       if (!tierInfo) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid tier" });

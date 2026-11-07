@@ -10,6 +10,7 @@ import { getProviderTier } from "./db/payments";
 import { providerHasFeature } from "@shared/entitlements";
 import { queueCrmInvoiceProjection } from "./crm/sourceHooks";
 import { assertPaymentActorCanInitiate } from "./paymentAuthorization";
+import { assertPaymentVelocityAllowed, throwIfPaymentVelocityBlocked } from "./paymentVelocity";
 
 // Helper: check if provider has paid tier (Basic or Premium)
 async function requirePaidTier(providerId: number) {
@@ -341,6 +342,16 @@ export const invoiceRouter = router({
       if (invoice.status === "paid" || invoice.status === "cancelled") {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invoice already " + invoice.status });
       }
+      const velocity = await assertPaymentVelocityAllowed({
+        actorId: ctx.user.id,
+        subjects: [
+          { dimension: "account", key: String(ctx.user.id) },
+          { dimension: "email", key: ctx.user.email || `user:${ctx.user.id}` },
+          ...(invoice.providerId ? [{ dimension: "provider" as const, key: String(invoice.providerId) }] : []),
+          { dimension: "ip", key: ctx.req.ip || ctx.req.headers["x-forwarded-for"]?.toString().split(",")[0] || "unknown" },
+        ],
+      });
+      throwIfPaymentVelocityBlocked(velocity);
 
       // Create Stripe checkout session
       const session = await stripe.checkout.sessions.create({

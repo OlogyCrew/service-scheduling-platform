@@ -37,7 +37,9 @@ export type AuditAction =
   | "run_customers_repair"
   | "rebuild_customers_projection"
   | "prepare_provider_survey"
-  | "send_provider_survey";
+  | "send_provider_survey"
+  | "payment_velocity_blocked"
+  | "update_payment_velocity_controls";
 
 export type TargetType = "user" | "provider" | "review" | "booking" | "document" | "system" | "terms_version";
 

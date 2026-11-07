@@ -420,6 +420,25 @@ export const payments = mysqlTable("payments", {
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
 
+/** Atomic fixed-window counters for payment-abuse controls. */
+export const paymentVelocityCounters = mysqlTable("payment_velocity_counters", {
+  id: int("id").autoincrement().primaryKey(),
+  dimension: mysqlEnum("dimension", ["account", "email", "stripe_customer", "provider", "booking", "ip"]).notNull(),
+  subjectKey: varchar("subjectKey", { length: 320 }).notNull(),
+  bucketStart: timestamp("bucketStart").notNull(),
+  attemptCount: int("attemptCount").notNull().default(0),
+  blockedUntil: timestamp("blockedUntil"),
+  lastAttemptAt: timestamp("lastAttemptAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  unique("payment_velocity_bucket_unique").on(table.dimension, table.subjectKey, table.bucketStart),
+  index("payment_velocity_subject_idx").on(table.dimension, table.subjectKey),
+  index("payment_velocity_blocked_idx").on(table.blockedUntil),
+]);
+export type PaymentVelocityCounter = typeof paymentVelocityCounters.$inferSelect;
+export type InsertPaymentVelocityCounter = typeof paymentVelocityCounters.$inferInsert;
+
 /**
  * Reviews
  */

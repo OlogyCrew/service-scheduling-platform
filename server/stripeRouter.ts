@@ -6,6 +6,7 @@ import { ENV } from "./_core/env";
 import * as db from "./db";
 import { getReferralCreditBalance, spendReferralCredits } from "./db/referrals";
 import { assertPaymentActorCanInitiate, assertProviderCanCollectPayments } from "./paymentAuthorization";
+import { assertPaymentVelocityAllowed, throwIfPaymentVelocityBlocked } from "./paymentVelocity";
 
 const stripe = new Stripe(ENV.stripeSecretKey, {
   apiVersion: "2026-01-28.clover" as any,
@@ -98,6 +99,23 @@ export const stripeRouter = router({
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Provider payment setup is incomplete." });
       }
 
+      const customerUser = await db.getUserById(ctx.user.id);
+      const customerSubscription = await db.getCustomerSubscription(ctx.user.id);
+      const velocity = await assertPaymentVelocityAllowed({
+        actorId: ctx.user.id,
+        subjects: [
+          { dimension: "account", key: String(ctx.user.id) },
+          { dimension: "email", key: ctx.user.email || `user:${ctx.user.id}` },
+          ...(customerUser?.stripeCustomerId || customerSubscription?.stripeCustomerId
+            ? [{ dimension: "stripe_customer" as const, key: customerUser?.stripeCustomerId || customerSubscription?.stripeCustomerId! }]
+            : []),
+          { dimension: "provider", key: String(provider.id) },
+          { dimension: "booking", key: String(booking.id) },
+          { dimension: "ip", key: ctx.req.ip || ctx.req.headers["x-forwarded-for"]?.toString().split(",")[0] || "unknown" },
+        ],
+      });
+      throwIfPaymentVelocityBlocked(velocity);
+
       // Determine amount to charge (deposit or full amount)
       const originalAmount = service.depositRequired
         ? parseFloat(booking.depositAmount || "0")
@@ -161,8 +179,6 @@ export const stripeRouter = router({
 
       // Reuse one Stripe Customer per OlogyCrew user so Stripe can correlate
       // payment history and risk signals across bookings and subscriptions.
-      const customerUser = await db.getUserById(ctx.user.id);
-      const customerSubscription = await db.getCustomerSubscription(ctx.user.id);
       let stripeCustomerId = customerUser?.stripeCustomerId || customerSubscription?.stripeCustomerId || undefined;
       if (!stripeCustomerId) {
         const customer = await stripe.customers.create({
