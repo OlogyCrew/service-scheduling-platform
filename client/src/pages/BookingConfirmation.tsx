@@ -80,6 +80,28 @@ export default function BookingConfirmation() {
   const { user } = useAuth();
   const [useCredits, setUseCredits] = useState(true);
 
+  const { data: booking, isLoading } = trpc.booking.getById.useQuery({ id: parseInt(id!) });
+  const { data: service } = trpc.service.getById.useQuery(
+    { id: booking?.serviceId || 0 },
+    { enabled: !!booking }
+  );
+  const { data: provider } = trpc.provider.getById.useQuery(
+    { id: booking?.providerId || 0 },
+    { enabled: !!booking }
+  );
+  const offlinePaymentQuery = trpc.offlinePayment.getForBooking.useQuery(
+    { bookingId: booking?.id || 0 },
+    { enabled: !!booking, retry: false }
+  );
+  const offlineStatusResolved = offlinePaymentQuery.isSuccess
+    && !offlinePaymentQuery.isFetching
+    && !offlinePaymentQuery.isError
+    && offlinePaymentQuery.data !== undefined;
+  // Only a successful, explicit null permits the legacy online payment flow.
+  // Pending, failed, and refreshing status reads must never fall back to Stripe.
+  const isOnlineBooking = offlineStatusResolved && offlinePaymentQuery.data === null;
+  const offlinePayment = offlineStatusResolved ? offlinePaymentQuery.data : null;
+
   // Credit balance
   const { data: creditBalance } = trpc.referral.getCreditBalance.useQuery(
     undefined,
@@ -89,7 +111,7 @@ export default function BookingConfirmation() {
   // Credit preview for this booking
   const { data: creditPreview } = trpc.stripe.previewCreditDiscount.useQuery(
     { bookingId: parseInt(id!) },
-    { enabled: !!id && !!user && useCredits }
+    { enabled: !!id && !!user && useCredits && isOnlineBooking }
   );
 
   const createCheckout = trpc.stripe.createCheckoutSession.useMutation({
@@ -115,26 +137,13 @@ export default function BookingConfirmation() {
   });
 
   const handlePayment = () => {
-    if (!id) return;
+    if (!id || !isOnlineBooking || !user || booking?.customerId !== user.id
+      || provider?.isOfficial || !provider?.canAcceptPlatformPayments || createCheckout.isPending) return;
     createCheckout.mutate({
       bookingId: parseInt(id),
       useCredits,
     });
   };
-
-  const { data: booking, isLoading } = trpc.booking.getById.useQuery({ id: parseInt(id!) });
-  const { data: service } = trpc.service.getById.useQuery(
-    { id: booking?.serviceId || 0 },
-    { enabled: !!booking }
-  );
-  const { data: provider } = trpc.provider.getById.useQuery(
-    { id: booking?.providerId || 0 },
-    { enabled: !!booking }
-  );
-  const { data: offlinePayment } = trpc.offlinePayment.getForBooking.useQuery(
-    { bookingId: booking?.id || 0 },
-    { enabled: !!booking }
-  );
 
   if (isLoading) {
     return (
@@ -219,6 +228,40 @@ export default function BookingConfirmation() {
   const creditDiscount = parseFloat(creditPreview?.applicableCredit || "0");
   const hasCredits = availableCredits > 0;
 
+  // Offline settlement is independent of the booking lifecycle and booking.paidAt.
+  const lifecycleHeading = booking.status === "cancelled" ? "Booking Cancelled"
+    : booking.status === "completed" ? "Booking Completed"
+    : booking.status === "in_progress" ? "Booking In Progress"
+    : booking.status === "confirmed" ? (
+      offlinePayment?.status === "due" ? "Booking Confirmed — Pay at Location"
+        : offlinePayment?.status === "paid" ? "Booking Confirmed — Paid at Location"
+        : offlinePayment?.status === "waived" ? "Booking Confirmed — Payment Waived"
+        : "Booking Confirmed"
+    ) : "Booking Request Submitted!";
+  const lifecycleDescription = booking.status === "cancelled" ? "This booking has been cancelled. Any recorded payment history is shown below."
+    : booking.status === "completed" ? "Your service is complete. Payment status is shown separately."
+    : booking.status === "in_progress" ? "Your service is in progress. Payment status is shown separately."
+    : booking.status === "confirmed" ? (
+      offlinePayment?.status === "due" ? "The provider has confirmed your booking. Pay the agreed amount at the location using the provider instructions."
+        : offlinePayment?.status === "paid" ? "The provider has recorded your offline payment. No online payment is required."
+        : offlinePayment?.status === "waived" ? "The provider or an authorized administrator has waived this payment. No online payment is required."
+        : "The provider has confirmed your booking. Payment status is being verified."
+    ) : "Your booking has been submitted and is pending provider confirmation.";
+  const heading = isOnlineBooking ? (
+    (booking as any).paidAt ? "Booking Confirmed & Paid!"
+      : booking.status === "confirmed" ? "Booking Confirmed — Payment Required"
+        : "Booking Request Submitted!"
+  ) : lifecycleHeading;
+  const description = isOnlineBooking ? (
+    (booking as any).paidAt ? "Your booking is fully confirmed and paid."
+      : booking.status === "confirmed" ? "The provider has confirmed your booking. Please complete payment to secure your spot."
+        : "Your booking has been submitted and is pending provider confirmation."
+  ) : lifecycleDescription;
+  const isCancelledOffline = !isOnlineBooking && booking.status === "cancelled";
+  const isConfirmedUnpaid = booking.status === "confirmed" && (isOnlineBooking
+    ? !(booking as any).paidAt : !offlinePayment || offlinePayment.status === "due");
+  const StatusIcon = isCancelledOffline ? XCircle : CheckCircle;
+
   return (
     <div className="min-h-screen bg-page">
       <NavHeader />
@@ -234,15 +277,52 @@ export default function BookingConfirmation() {
       )}
 
       <div className="container py-12 max-w-3xl">
+        {!offlineStatusResolved && (
+          <Card className="mb-6" role={offlinePaymentQuery.isError ? "alert" : "status"}>
+            <CardHeader>
+              <CardTitle>{offlinePaymentQuery.isError ? "Payment Status Unavailable" : "Checking Payment Status"}</CardTitle>
+              <CardDescription>
+                {offlinePaymentQuery.isError
+                  ? "We couldn't verify this booking's payment status. Retry to view payment details."
+                  : "Please wait while we verify this booking's payment status."}
+              </CardDescription>
+            </CardHeader>
+            {offlinePaymentQuery.isError && (
+              <CardContent>
+                <Button variant="outline" disabled={offlinePaymentQuery.isFetching} onClick={() => { void offlinePaymentQuery.refetch(); }}>
+                  Retry Payment Status
+                </Button>
+              </CardContent>
+            )}
+          </Card>
+        )}
         {offlinePayment ? (
           <Card className="mb-6 border-amber-200 bg-amber-50/70">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Pay at Location</CardTitle>
+              <CardTitle className="text-lg">{offlinePayment.status === "paid" ? "Offline Payment Receipt" : offlinePayment.status === "waived" ? "Payment Waiver" : "Pay at Location"}</CardTitle>
               <CardDescription>Payment status: <span className="font-semibold capitalize">{offlinePayment.status}</span></CardDescription>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p>Amount due: <span className="font-semibold">{formatPrice(Number(offlinePayment.originalAmountDue))}</span></p>
-              {offlinePayment.providerInstructions ? <p className="text-muted-foreground">Provider instructions: {offlinePayment.providerInstructions}</p> : null}
+              <p>Original agreed amount: <span className="font-semibold">{formatPrice(Number(offlinePayment.originalAmountDue))}</span></p>
+              <p>Outstanding balance: <span className="font-semibold">{formatPrice(offlinePayment.status === "due" ? Number(offlinePayment.originalAmountDue) : 0)}</span></p>
+              {offlinePayment.status === "paid" && (
+                <div className="space-y-2 border-t border-amber-200 pt-2">
+                  <p>Amount received: <span className="font-semibold">{formatPrice(Number(offlinePayment.amountReceived))}</span></p>
+                  {offlinePayment.offlinePaymentMethod && <p>Payment method: {offlinePayment.offlinePaymentMethod.replace(/_/g, " ")}</p>}
+                  {offlinePayment.paidAt && <p>Payment recorded: {new Date(offlinePayment.paidAt).toLocaleString()}</p>}
+                  {offlinePayment.confirmedByUserId != null && <p>Recorded by user: {offlinePayment.confirmedByUserId}</p>}
+                  {offlinePayment.paymentNote && <p>Payment note: {offlinePayment.paymentNote}</p>}
+                </div>
+              )}
+              {offlinePayment.status === "waived" && (
+                <div className="space-y-2 border-t border-amber-200 pt-2">
+                  <p>Amount waived: <span className="font-semibold">{formatPrice(Number(offlinePayment.waiverAmount))}</span></p>
+                  {offlinePayment.waiverReason && <p>Waiver reason: {offlinePayment.waiverReason}</p>}
+                  {offlinePayment.waivedAt && <p>Payment waived: {new Date(offlinePayment.waivedAt).toLocaleString()}</p>}
+                  {offlinePayment.waivedByUserId != null && <p>Waived by user: {offlinePayment.waivedByUserId}</p>}
+                </div>
+              )}
+              {offlinePayment.status === "due" && booking.status !== "cancelled" && offlinePayment.providerInstructions ? <p className="text-muted-foreground">Provider instructions: {offlinePayment.providerInstructions}</p> : null}
               <p className="text-xs text-muted-foreground">Only the provider or an authorized administrator can record payment or waive this amount.</p>
             </CardContent>
           </Card>
@@ -251,25 +331,17 @@ export default function BookingConfirmation() {
         {/* Success Message */}
         <div className="text-center mb-8">
           <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${
-            (booking as any).paidAt ? 'bg-green-100' : booking.status === 'confirmed' ? 'bg-blue-100' : 'bg-green-100'
+            isCancelledOffline ? 'bg-red-100' : isConfirmedUnpaid ? 'bg-blue-100' : 'bg-green-100'
           }`}>
-            <CheckCircle className={`h-8 w-8 ${
-              (booking as any).paidAt ? 'text-green-600' : booking.status === 'confirmed' ? 'text-blue-600' : 'text-green-600'
+            <StatusIcon className={`h-8 w-8 ${
+              isCancelledOffline ? 'text-red-600' : isConfirmedUnpaid ? 'text-blue-600' : 'text-green-600'
             }`} />
           </div>
           <h1 className="text-3xl font-bold mb-2">
-            {(booking as any).paidAt
-              ? "Booking Confirmed & Paid!"
-              : booking.status === "confirmed"
-              ? "Booking Confirmed — Payment Required"
-              : "Booking Request Submitted!"}
+            {heading}
           </h1>
           <p className="text-muted-foreground">
-            {(booking as any).paidAt
-              ? "Your booking is fully confirmed and paid."
-              : booking.status === "confirmed"
-              ? "The provider has confirmed your booking. Please complete payment to secure your spot."
-              : "Your booking has been submitted and is pending provider confirmation."}
+            {description}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
             Booking Number: <span className="font-mono font-semibold">{booking.bookingNumber}</span>
@@ -352,7 +424,7 @@ export default function BookingConfirmation() {
         </Card>
 
         {/* Payment Information */}
-        {(provider as any)?.isOfficial ? (
+        {isOnlineBooking && ((provider as any)?.isOfficial ? (
           <Card className="mb-6 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-amber-800">
@@ -488,9 +560,10 @@ export default function BookingConfirmation() {
             <PaymentMethods size="sm" className="mt-2" />
           </CardContent>
         </Card>
-        )}
+        ))}
 
         {/* Next Steps */}
+        {(isOnlineBooking || booking.status === "pending" || booking.status === "confirmed") && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>What's Next?</CardTitle>
@@ -503,7 +576,9 @@ export default function BookingConfirmation() {
               <div>
                 <p className="font-semibold">Provider Review</p>
                 <p className="text-sm text-muted-foreground">
-                  {provider.businessName} will review your booking request and confirm availability.
+                  {!isOnlineBooking && booking.status === "confirmed"
+                    ? `${provider.businessName} has confirmed your booking.`
+                    : `${provider.businessName} will review your booking request and confirm availability.`}
                 </p>
               </div>
             </div>
@@ -514,7 +589,9 @@ export default function BookingConfirmation() {
               <div>
                 <p className="font-semibold">Email Confirmation</p>
                 <p className="text-sm text-muted-foreground">
-                  You'll receive an email once the provider confirms your booking.
+                  {!isOnlineBooking && booking.status === "confirmed"
+                    ? "Check your booking confirmation for the service details."
+                    : "You'll receive an email once the provider confirms your booking."}
                 </p>
               </div>
             </div>
@@ -531,6 +608,7 @@ export default function BookingConfirmation() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* Share & Earn Referral Card */}
         <Card className="mb-6 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
@@ -624,10 +702,10 @@ export default function BookingConfirmation() {
           )}
 
           <div className="flex gap-4">
-            {user && booking.customerId === user.id && !(provider as any)?.isOfficial && (provider as any)?.canAcceptPlatformPayments && depositAmount && !(booking as any).depositPaidAt && (
+            {isOnlineBooking && user && booking.customerId === user.id && !(provider as any)?.isOfficial && (provider as any)?.canAcceptPlatformPayments && depositAmount && !(booking as any).depositPaidAt && (
               <Button
                 onClick={() => handlePayment()}
-                disabled={createCheckout.isPending}
+                disabled={!isOnlineBooking || createCheckout.isPending}
                 className="flex-1"
               >
                 {createCheckout.isPending ? (
@@ -639,10 +717,10 @@ export default function BookingConfirmation() {
                 )}
               </Button>
             )}
-            {user && booking.customerId === user.id && !(provider as any)?.isOfficial && (provider as any)?.canAcceptPlatformPayments && !depositAmount && !(booking as any).paidAt && booking.status === "confirmed" && (
+            {isOnlineBooking && user && booking.customerId === user.id && !(provider as any)?.isOfficial && (provider as any)?.canAcceptPlatformPayments && !depositAmount && !(booking as any).paidAt && booking.status === "confirmed" && (
               <Button
                 onClick={() => handlePayment()}
-                disabled={createCheckout.isPending}
+                disabled={!isOnlineBooking || createCheckout.isPending}
                 className="flex-1"
               >
                 {createCheckout.isPending ? (
@@ -657,7 +735,7 @@ export default function BookingConfirmation() {
             <Button
               onClick={() => setLocation("/my-bookings")}
               className="flex-1"
-              variant={depositAmount && !(booking as any).depositPaidAt ? "outline" : "default"}
+              variant={isOnlineBooking && depositAmount && !(booking as any).depositPaidAt ? "outline" : "default"}
             >
               View My Bookings
             </Button>

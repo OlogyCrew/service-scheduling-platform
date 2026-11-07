@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { NavHeader } from "@/components/shared/NavHeader";
+import { OfflinePaymentPanel } from "@/components/OfflinePaymentPanel";
 import { toast } from "sonner";
 import { formatCurrency, formatDate } from "@/lib/dateUtils";
 import {
@@ -144,6 +145,17 @@ export default function BookingDetail() {
     { enabled: bookingId > 0 }
   );
 
+  // A ledger row, not current provider settings, identifies an offline booking.
+  // Null is the only successful read that permits the existing online card.
+  const offlinePaymentQuery = trpc.offlinePayment.getForBooking.useQuery(
+    { bookingId },
+    { enabled: bookingId > 0 && !!data?.booking && !!user, retry: false }
+  );
+  const currentProviderQuery = trpc.provider.getMyProfile.useQuery(undefined, {
+    enabled: !!user && !!data?.booking && data.booking.customerId !== user.id && user.role !== "admin",
+    retry: false,
+  });
+
   // Fetch sessions for multi-day/recurring bookings
   const isMultiSession = data?.booking?.bookingType && data.booking.bookingType !== "single";
   const { data: sessions } = trpc.booking.getSessions.useQuery(
@@ -239,8 +251,11 @@ export default function BookingDetail() {
 
   const { booking, customer, service, payment, messages, review } = data;
   const provider = data.provider;
-  const isProvider = user && provider && user.id !== booking.customerId;
   const isCustomer = user && booking.customerId === user.id;
+  const isProvider = !!user && !isCustomer && !currentProviderQuery.error && currentProviderQuery.data?.id === booking.providerId;
+  // Customer-side views remain read-only, including an admin's own booking.
+  // The backend independently enforces ownership/admin authority for mutations.
+  const canManageOfflinePayment = !!user && !isCustomer && (isProvider || user.role === "admin");
 
   const handleSendMessage = () => {
     if (!messageText.trim() || !customer) return;
@@ -758,6 +773,24 @@ export default function BookingDetail() {
             )}
 
             {/* Payment Info */}
+            {offlinePaymentQuery.error ? (
+              <Card>
+                <CardHeader><CardTitle className="text-lg">Payment information unavailable</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <p role="alert" className="text-sm text-destructive">Unable to verify this booking's payment record. No payment actions are available until it can be loaded.</p>
+                  <Button variant="outline" size="sm" disabled={offlinePaymentQuery.isFetching} onClick={() => void offlinePaymentQuery.refetch()}>
+                    {offlinePaymentQuery.isFetching ? "Retrying…" : "Retry payment information"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : offlinePaymentQuery.data === undefined ? (
+              <Card>
+                <CardHeader><CardTitle className="text-lg">Payment Information</CardTitle></CardHeader>
+                <CardContent><p role="status" className="text-sm text-muted-foreground">Loading payment information…</p></CardContent>
+              </Card>
+            ) : offlinePaymentQuery.data !== null ? (
+              <OfflinePaymentPanel key={booking.id} payment={offlinePaymentQuery.data} canManage={canManageOfflinePayment} />
+            ) : (
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -810,6 +843,7 @@ export default function BookingDetail() {
                 )}
               </CardContent>
             </Card>
+            )}
 
             {/* Messages */}
             <Card>
