@@ -375,6 +375,11 @@ const guideSections: GuideSection[] = [
           "All payments on OlogyCrew are processed securely through Stripe. When you book a service, you'll be redirected to a secure Stripe checkout page to complete payment. Your payment information is never stored on our servers — Stripe handles all sensitive data with bank-level encryption.",
       },
       {
+        title: "Pay at Location",
+        content:
+          "Some providers may offer Pay at Location for selected services. When this option is available, choose it during booking to reserve the appointment without a card charge from OlogyCrew. Payment remains due to the provider at the agreed location or according to the provider's instructions.\n\nAccepted offline methods may include cash, bank transfer, mobile money, or another method approved by the provider. Check the provider's instructions and keep any receipt or confirmation for your records.\n\nYour payment status is shown separately from your booking status: Due means payment is still outstanding, Paid means the provider or an authorized OlogyCrew administrator confirmed receipt, and Waived means an authorized provider or administrator approved a waiver and recorded a reason. Customers cannot mark their own payment as paid or waive it. Pay at Location does not create a Stripe charge, transfer, or payout.",
+      },
+      {
         title: "Platform Fees",
         content:
           "OlogyCrew charges a small 1% platform fee on each booking transaction. This fee is included in the total amount shown at checkout. There are no hidden fees — what you see is what you pay.",
