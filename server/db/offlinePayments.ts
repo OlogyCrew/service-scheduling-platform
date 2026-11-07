@@ -4,6 +4,7 @@ import {
   providerPayAtLocationSettings, services, serviceProviders,
 } from "../../drizzle/schema";
 import { getDb } from "./connection";
+import { insertAuditEntryInTransaction, type AuditAction, type TargetType } from "./auditLog";
 
 export const OFFLINE_METHODS = ["cash", "bank_transfer", "mobile_money", "other"] as const;
 export type OfflineMethod = typeof OFFLINE_METHODS[number];
@@ -60,19 +61,30 @@ export async function listOutstandingOfflinePayments(providerId: number) {
   const db = await getDb(); if (!db) return [];
   return db.select({ payment: offlineBookingPayments, booking: bookings }).from(offlineBookingPayments).innerJoin(bookings, eq(offlineBookingPayments.bookingId, bookings.id)).where(and(eq(bookings.providerId, providerId), eq(offlineBookingPayments.status, "due"))).orderBy(desc(offlineBookingPayments.createdAt));
 }
-export async function transitionOfflinePayment(input: { bookingId: number; actorId: number; status: "paid" | "waived"; amount: string; method?: OfflineMethod; reason?: string; note?: string | null }) {
+export async function transitionOfflinePayment(input: { bookingId: number; actorId: number; status: "paid" | "waived"; amount: string; method?: OfflineMethod; reason?: string; note?: string | null; auditAction?: AuditAction; auditTargetType?: TargetType; auditTargetId?: number }) {
   const db = await getDb(); if (!db) throw new Error("Database not available");
   const amount = Number(input.amount); if (!Number.isFinite(amount) || amount < 0) throw new Error("Invalid amount.");
-  return db.transaction(async (tx: any) => {
+  await db.transaction(async (tx: any) => {
     const rows = await tx.select().from(offlineBookingPayments).where(eq(offlineBookingPayments.bookingId, input.bookingId)).limit(1);
     const row = rows[0]; if (!row) throw new Error("Offline payment not found.");
     if (row.status !== "due") throw new Error("Offline payment has already been settled.");
     if (amount.toFixed(2) !== Number(row.originalAmountDue).toFixed(2)) throw new Error("Full payment or full waiver is required.");
     if (input.status === "paid" && !input.method) throw new Error("Offline payment method is required.");
     if (input.status === "waived" && !input.reason?.trim()) throw new Error("A waiver reason is required.");
-    const set = input.status === "paid" ? { status: "paid", amountReceived: input.amount, offlinePaymentMethod: input.method, paidAt: new Date(), confirmedByUserId: input.actorId, paymentNote: input.note || null } : { status: "waived", waiverAmount: input.amount, waiverReason: input.reason!.trim(), waivedAt: new Date(), waivedByUserId: input.actorId };
+    const now = new Date();
+    const set = input.status === "paid" ? { status: "paid", amountReceived: input.amount, offlinePaymentMethod: input.method, paidAt: now, confirmedByUserId: input.actorId, paymentNote: input.note || null } : { status: "waived", waiverAmount: input.amount, waiverReason: input.reason!.trim(), waivedAt: now, waivedByUserId: input.actorId };
     const result = await tx.update(offlineBookingPayments).set(set).where(and(eq(offlineBookingPayments.bookingId, input.bookingId), eq(offlineBookingPayments.status, "due")));
     if (!((result as any)[0]?.affectedRows ?? 0)) throw new Error("Offline payment has already been settled.");
-    return getOfflinePaymentForBooking(input.bookingId);
+    if (!input.auditAction || !input.auditTargetType || input.auditTargetId === undefined) throw new Error("Offline payment audit context is required.");
+    await insertAuditEntryInTransaction(tx, {
+      actorId: input.actorId,
+      action: input.auditAction,
+      targetType: input.auditTargetType,
+      targetId: input.auditTargetId,
+      details: input.status === "paid"
+        ? { originalAmountDue: row.originalAmountDue, amountReceived: input.amount, resultingStatus: "paid", offlinePaymentMethod: input.method, paymentNote: input.note || null, confirmedAt: now.toISOString(), confirmingActorId: input.actorId }
+        : { originalAmountDue: row.originalAmountDue, waiverAmount: input.amount, waiverReason: input.reason!.trim(), resultingStatus: "waived", waivedAt: now.toISOString(), authorizingActorId: input.actorId },
+    });
   });
+  return getOfflinePaymentForBooking(input.bookingId);
 }

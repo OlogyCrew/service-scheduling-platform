@@ -72,8 +72,7 @@ export const offlinePaymentRouter = router({
     .mutation(async ({ ctx, input }) => {
       const booking = await assertBookingAccess(ctx.user, input.bookingId, true);
       try {
-        const payment = await db.transitionOfflinePayment({ bookingId: input.bookingId, actorId: ctx.user.id, status: "paid", amount: input.amountReceived, method: input.offlinePaymentMethod, note: input.paymentNote });
-        await createAuditEntry({ actorId: ctx.user.id, action: "confirm_pay_at_location_payment", targetType: "booking", targetId: booking.id, details: { amountReceived: input.amountReceived, offlinePaymentMethod: input.offlinePaymentMethod } });
+        const payment = await db.transitionOfflinePayment({ bookingId: input.bookingId, actorId: ctx.user.id, status: "paid", amount: input.amountReceived, method: input.offlinePaymentMethod, note: input.paymentNote, auditAction: "confirm_pay_at_location_payment", auditTargetType: "booking", auditTargetId: booking.id });
         return payment;
       } catch (error) {
         throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Unable to confirm payment" });
@@ -85,8 +84,7 @@ export const offlinePaymentRouter = router({
     .mutation(async ({ ctx, input }) => {
       const booking = await assertBookingAccess(ctx.user, input.bookingId, true);
       try {
-        const payment = await db.transitionOfflinePayment({ bookingId: input.bookingId, actorId: ctx.user.id, status: "waived", amount: input.waiverAmount, reason: input.waiverReason });
-        await createAuditEntry({ actorId: ctx.user.id, action: "waive_pay_at_location_payment", targetType: "booking", targetId: booking.id, details: { waiverAmount: input.waiverAmount } });
+        const payment = await db.transitionOfflinePayment({ bookingId: input.bookingId, actorId: ctx.user.id, status: "waived", amount: input.waiverAmount, reason: input.waiverReason, auditAction: "waive_pay_at_location_payment", auditTargetType: "booking", auditTargetId: booking.id });
         return payment;
       } catch (error) {
         throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Unable to waive payment" });

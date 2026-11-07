@@ -47,25 +47,32 @@ export type AuditAction =
 
 export type TargetType = "user" | "provider" | "review" | "booking" | "document" | "system" | "terms_version";
 
-/**
- * Record an admin action in the audit log.
- */
-export async function createAuditEntry(params: {
+export type AuditEntryInput = {
   actorId: number;
   action: AuditAction;
   targetType: TargetType;
   targetId: number;
   details?: Record<string, any>;
-}) {
-  const db = await getDb();
-  if (!db) return;
-  await db.insert(auditLog).values({
+};
+
+/** Insert an audit entry through an existing transaction/executor. */
+export async function insertAuditEntryInTransaction(tx: any, params: AuditEntryInput) {
+  await tx.insert(auditLog).values({
     actorId: params.actorId,
     action: params.action,
     targetType: params.targetType,
     targetId: params.targetId,
     details: params.details ? JSON.stringify(params.details) : null,
   });
+}
+
+/**
+ * Record an admin action in the audit log.
+ */
+export async function createAuditEntry(params: AuditEntryInput) {
+  const db = await getDb();
+  if (!db) return;
+  await insertAuditEntryInTransaction(db, params);
 }
 
 /**

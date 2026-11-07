@@ -63,8 +63,10 @@ describe("Stage 4 Pay-at-Location preview contracts", () => {
     expect(offlineRouter).toContain("confirmPayment");
     expect(offlineRouter).toContain("waivePayment");
     expect(offlineRouter).toContain("mutate ? (!ownsProvider && !admin)");
-    expect(offlineRouter).toContain('action: "confirm_pay_at_location_payment"');
-    expect(offlineRouter).toContain('action: "waive_pay_at_location_payment"');
+    expect(offlineRouter).toContain('auditAction: "confirm_pay_at_location_payment"');
+    expect(offlineRouter).toContain('auditAction: "waive_pay_at_location_payment"');
+    expect(helper).toContain("await insertAuditEntryInTransaction(tx");
+    expect(helper).toContain("waiverReason: input.reason!.trim()");
     expect(offlineRouter).toContain("getForBooking");
     expect(offlineRouter).toContain("booking.customerId !== user.id");
     expect(myQuotes).not.toContain("confirmPayment");

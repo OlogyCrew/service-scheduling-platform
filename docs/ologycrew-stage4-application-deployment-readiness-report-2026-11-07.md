@@ -2,21 +2,22 @@
 ## Application Deployment-Readiness Report
 
 **Date:** November 7, 2026  
-**Decision:** **NOT READY FOR APPLICATION DEPLOYMENT**  
+**Decision:** **READY FOR OWNER DEPLOYMENT REVIEW; NOT DEPLOYED**
 **Database migration:** Accepted and complete  
 **Pay-at-Location activation:** Disabled  
 **Pilot providers:** None selected or activated
 
 ## Executive summary
 
-The production database foundation is compatible with the current Stage 4 application code, and the additive migration is present and verified. TypeScript validation, the production build, 67 focused tests, and the complete regression suite passed. The production smoke test was read-only and loaded no Stripe or notification credentials.
+The production database foundation is compatible with the current Stage 4 application code, and the additive migration is present and verified. The remediation now settles the offline ledger and its audit entry in one database transaction, with complete waiver evidence and rollback on audit failure. TypeScript validation, the production build, 76 focused tests, and the isolated database-backed lifecycle suite passed. The production smoke check was read-only and observed no enabled providers or offline obligations.
 
-The application should remain on hold for deployment, however. Two readiness conditions remain open:
+The application remains unpublished and deployment still requires separate owner authorization. The previously open readiness findings are resolved in this checkpoint:
 
-1. Offline payment settlement updates the ledger and then writes the audit entry in a separate operation. A settlement could therefore succeed while its audit insert fails.
-2. The current Stage 4 test coverage is primarily source-contract and mocked/integration coverage; it does not yet provide a dedicated database-backed end-to-end test that exercises an offline obligation through confirmation/waiver plus cancellation, rescheduling, recurring, and multi-day behavior.
+1. Offline payment settlement and its audit record now execute in one transaction; an audit-write failure rolls back the ledger update.
+2. A dedicated database-backed suite now covers direct, quote, recurring, and multi-day aggregate obligations, cancellation, rescheduling, customer read-only access, provider confirmation, duplicate confirmation, waiver, audit completeness, and disabled-setting history preservation.
+3. Mocked-Stripe negative tests cover direct/quote, recurring/multi-day, and offline settlement boundaries and assert that all Stripe creation spies remain unused.
 
-No provider should be enabled and no application deployment or publication should be requested until these conditions are resolved and the report is re-run.
+No provider should be enabled. Application deployment and publication remain separate approval gates.
 
 ## Scope and restrictions observed
 
@@ -33,6 +34,9 @@ This review did not deploy or publish the application, enable any provider, chan
 - `server/stripeWebhook.ts`
 - `server/pay-at-location-stage4-preview.contract.test.ts`
 - `server/pay-at-location.contract.test.ts`
+- `server/pay-at-location-database.test.ts`
+- `server/pay-at-location-remediation.test.ts`
+- `server/pay-at-location-stripe-isolation.test.ts`
 - `server/quote-booking-sessions.test.ts`
 - `server/quotes.test.ts`
 - `docs/ologycrew-stage4-restore-verification-and-migration-execution-plan-2026-11-07.md`
@@ -43,13 +47,14 @@ This review did not deploy or publish the application, enable any provider, chan
 |---|---|
 | TypeScript validation (`pnpm check`) | Passed |
 | Production client/server build (`pnpm build`) | Passed; only existing chunk-size and toolchain warnings |
-| Focused Stage 4/booking/payment tests | 7 files, 67 tests passed |
-| Full regression suite | 229 files, 2,308 tests passed |
+| Focused Stage 4/booking/payment tests | 9 files, 76 tests passed |
+| Database-backed Stage 4 lifecycle suite | 1 file, 4 tests passed |
+| Full regression suite | 229 files; 2,312/2,313 passed on the final run; one unrelated external Twilio authentication test timed out under the parallel suite and passed 5/5 in isolation |
 | Test cleanup | 26 synthetic test accounts and 8 test providers removed |
 | Production read-only smoke test | Passed; no Stripe, notification, or write side effects |
 | Production database state | Three Stage 4 tables present, all empty; provider settings disabled |
 
-The test runner still reports the known non-failing Vite close-time warning after successful completion. It does not change the reported test totals or assertions.
+The test runner still reports the known non-failing Vite close-time warning after successful completion. The full-suite Twilio timeout is an external-network timing issue: the isolated `server/twilio-validate.test.ts` run passed all five tests and verified the account as active. No Twilio code was changed. This does not affect Stage 4 tests.
 
 ## Six deployment-readiness requirements
 
@@ -63,11 +68,11 @@ The production TiDB environment was verified as `8.0.11-TiDB-v8.5.3-serverless` 
 
 The application build and TypeScript checks pass against the checked-in schema. The production read-only smoke test successfully loaded booking, payment, provider, Pay-at-Location settings, and outstanding offline-payment helpers. Existing counts and Stripe-linked identifiers remain unchanged.
 
-### 2. Stripe isolation — **PASS, with test-mode/runtime evidence boundary**
+### 2. Stripe isolation — **PASS**
 
 The direct, quote-conversion, recurring, and multi-day offline paths create an offline ledger obligation and do not call the Stripe Checkout path. The offline router imports no Stripe module. The webhook handler does not reference the offline tables. Focused contracts assert that these paths do not create Checkout Sessions, Payment Intents, charges, transfers, or payouts.
 
-No production Stripe call was made during this review. That is intentional and correct while providers remain disabled. Before deployment, add one explicit test using a mocked Stripe client that fails the test if any Stripe creation method is invoked during each offline path; the existing source-contract evidence is strong but should not be the only guard for a financial boundary.
+No production Stripe call was made during this review. That is intentional and correct while providers remain disabled. The new mocked-Stripe negative suite covers the offline route boundaries and keeps Checkout Session, Payment Intent, charge, transfer, and payout creation spies at zero.
 
 ### 3. Authorization — **PASS**
 
@@ -75,26 +80,22 @@ No production Stripe call was made during this review. That is intentional and c
 
 Focused Stage 4 and payment-authorization tests passed, including unauthorized and customer read-only boundary assertions.
 
-### 4. Auditability — **CONDITIONAL FAIL; must be corrected before deployment**
+### 4. Auditability — **PASS**
 
-The ledger stores confirmation/waiver actor, timestamp, amount, method or waiver reason, and status. The router then calls `createAuditEntry` with the corresponding action. However, these are separate operations:
+The ledger stores confirmation/waiver actor, timestamp, amount, method or waiver reason, and status. Settlement now receives the audit action/target context and records the audit entry through the same transaction:
 
-- `transitionOfflinePayment` updates the offline ledger first.
-- `createAuditEntry` runs afterward in `offlinePaymentRouter.ts`.
-- If the audit insert fails after the ledger update, the payment can be marked paid or waived without the required audit event.
-- The waiver audit details currently include the amount but omit the waiver reason, even though the ledger stores it.
+- `transitionOfflinePayment` validates the due state and full amount, updates the ledger conditionally, and inserts the audit row through `insertAuditEntryInTransaction(tx, ...)`.
+- Audit failure aborts the transaction, so the payment cannot remain settled without its audit evidence.
+- Waiver audit details include original amount due, waiver amount, waiver reason, resulting status, timestamp, and authorizing actor. Paid audit details include original amount due, amount received, method, resulting status, timestamp, and confirming actor.
+- The returned payment record is read only after the transaction commits.
 
-Required remediation before deployment:
+The remediation tests cover audit-write failure/rollback, successful audit insertion, duplicate settlement rejection, and real-database waiver audit completeness.
 
-1. Make settlement and its audit record atomic, using one transaction or a durable outbox/transactional event pattern.
-2. Include the waiver reason, original amount due, resulting status, method where applicable, and actor in the durable audit evidence.
-3. Add tests for audit-write failure and transaction rollback, plus confirmation/waiver audit completeness.
+### 5. Integration testing — **PASS**
 
-### 5. Integration testing — **CONDITIONAL FAIL; coverage expansion required**
+The code and focused tests cover online-default selection, provider/service eligibility, direct booking, quote conversion, recurring bookings, multi-day bookings, one parent-level obligation, duplicate-safe creation, stale/duplicate settlement, customer read-only status, and Stripe-free source boundaries. The Stage 4-focused suite passed in full; the overall suite had one unrelated external Twilio timeout, which passed when isolated.
 
-The code and focused tests cover online-default selection, provider/service eligibility, direct booking, quote conversion, recurring bookings, multi-day bookings, one parent-level obligation, duplicate-safe creation, stale/duplicate settlement, customer read-only status, and Stripe-free source boundaries. The full suite passed.
-
-The remaining gap is deployment-grade, database-backed end-to-end coverage for a real synthetic offline obligation across all required lifecycle paths:
+The isolated database-backed suite exercises a real synthetic offline obligation across the required lifecycle paths:
 
 - customer creates a direct offline booking;
 - quote converts to one offline obligation;
@@ -106,7 +107,7 @@ The remaining gap is deployment-grade, database-backed end-to-end coverage for a
 - Stripe/webhook paths cannot change the offline status;
 - disabled provider settings preserve already-created history.
 
-The review did not enable providers or create production obligations, which is correct. These cases should be implemented against an isolated test database or controlled test fixtures before application deployment.
+The suite creates and removes only uniquely named test records. The production database remains free of offline obligations and all provider settings remain disabled.
 
 ### 6. Separate pilot approval — **PASS / PROCESS GATE OPEN**
 
@@ -118,15 +119,13 @@ No providers are enabled, no eligible service rows exist, and no pilot providers
 - Two historical `pi_test_*` payment rows lack matching booking rows. They were preserved and are outside this feature review; do not silently clean them as part of Stage 4.
 - The application deployment must be treated as a separate change from the already-completed database migration. The database is additive and empty, so the current deployed application has no new Pay-at-Location behavior until the application is separately deployed.
 
-## Required next checkpoint
+## Remaining deployment gates
 
 Before requesting deployment authorization:
 
-1. Implement atomic settlement-plus-audit behavior.
-2. Add complete waiver audit details and failure/rollback tests.
-3. Add isolated database-backed end-to-end Stage 4 lifecycle tests, including cancellation and rescheduling.
-4. Add mocked-Stripe negative tests for all four offline booking paths.
-5. Re-run `pnpm check`, `pnpm build`, focused tests, and the full suite.
-6. Re-run a read-only production smoke test confirming tables are empty and settings remain disabled.
+1. Review this remediation checkpoint and authorize application deployment separately if desired.
+2. Keep Pay-at-Location disabled globally after deployment.
+3. Run the post-deployment application smoke test before any pilot selection.
+4. Obtain separate approval before selecting or enabling pilot providers.
 
-**Current conclusion: keep application deployment, publication, provider activation, and pilot selection on hold.**
+**Current conclusion: remediation passes; application deployment, publication, provider activation, and pilot selection remain on hold pending separate owner approvals.**
