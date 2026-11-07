@@ -170,6 +170,54 @@ function ServicePhotosManager({ serviceId, onClose, maxPhotos = 1 }: { serviceId
   );
 }
 
+function PayAtLocationSettingsSection() {
+  const { data: settings, isLoading } = trpc.offlinePayment.getProviderSettings.useQuery();
+  const { data: provider } = trpc.provider.getMine.useQuery();
+  const { data: services } = trpc.service.listByProvider.useQuery({ providerId: provider?.id || 0 }, { enabled: !!provider?.id });
+  const [enabled, setEnabled] = useState(false);
+  const [instructions, setInstructions] = useState("");
+  const [serviceIds, setServiceIds] = useState<number[]>([]);
+  const utils = trpc.useUtils();
+
+  useEffect(() => {
+    if (settings) {
+      setEnabled(settings.enabled);
+      setInstructions(settings.instructions || "");
+      setServiceIds(settings.serviceIds || []);
+    }
+  }, [settings]);
+
+  const save = trpc.offlinePayment.updateProviderSettings.useMutation({
+    onSuccess: () => {
+      toast.success("Pay-at-Location settings saved");
+      utils.offlinePayment.getProviderSettings.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  if (isLoading) return <Card><CardContent className="p-5 text-sm text-muted-foreground">Loading Pay-at-Location settings...</CardContent></Card>;
+  const providerServices = (services || []) as any[];
+  return (
+    <Card className="border-amber-200 bg-amber-50/40 shadow-none">
+      <CardHeader>
+        <CardTitle className="text-base">Pay at Location</CardTitle>
+        <CardDescription>Let customers reserve eligible services and settle directly with you. Existing Stripe payment settings are unchanged.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between gap-4 rounded-lg border bg-white p-3">
+          <div><Label htmlFor="pay-at-location-enabled">Accept Pay at Location</Label><p className="text-xs text-muted-foreground">Disable this to stop new offline bookings; history remains visible.</p></div>
+          <Switch id="pay-at-location-enabled" checked={enabled} onCheckedChange={setEnabled} />
+        </div>
+        <div className="space-y-2"><Label htmlFor="pay-at-location-instructions">Customer instructions</Label><Textarea id="pay-at-location-instructions" value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Where and when should customers pay?" maxLength={2000} /></div>
+        <div className="space-y-2"><Label>Eligible services</Label><div className="grid gap-2 sm:grid-cols-2">
+          {providerServices.map((service) => <label key={service.id} className="flex items-center gap-2 rounded border bg-white p-2 text-sm"><Checkbox checked={serviceIds.includes(service.id)} onCheckedChange={(checked) => setServiceIds((current) => checked ? (current.includes(service.id) ? current : current.concat(service.id)) : current.filter((id) => id !== service.id))} />{service.name}</label>)}
+        </div></div>
+        <Button onClick={() => save.mutate({ enabled, instructions, serviceIds })} disabled={save.isPending}>{save.isPending ? "Saving..." : "Save Pay-at-Location settings"}</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ============================================================================
 // STRIPE CONNECT SECTION
 // ============================================================================
@@ -3244,6 +3292,7 @@ export default function ProviderDashboard(props: { initialTab?: string; hideChro
                       </span>
                     </AccordionTrigger>
                     <AccordionContent className="space-y-4 pb-5">
+                      <PayAtLocationSettingsSection />
                       {showTipsTool ? <TipSettingsSection /> : null}
                       {showEstimatesTool ? <FreeEstimatesSection /> : null}
                     </AccordionContent>

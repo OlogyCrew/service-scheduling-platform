@@ -782,6 +782,7 @@ export default function ServiceDetail() {
       venueName: (effectiveLocType === "fixed_location" && bookingForm.venueName) ? bookingForm.venueName : undefined,
       customerNotes: bookingForm.notes || undefined,
       bookingSource: "direct",
+      paymentMethod: paymentChoice === "pay_at_location" ? "pay_at_location" : "online",
       subtotal,
       promoCodeId: promoApplied?.valid ? promoApplied.promoCodeId ?? undefined : undefined,
       referralCodeId: referralApplied?.valid ? referralApplied.referralCodeId : undefined,
@@ -792,7 +793,7 @@ export default function ServiceDetail() {
   const isBookingSuccess = createBooking.isSuccess || createMultiDay.isSuccess || createRecurring.isSuccess;
 
   // Payment timing choice: "pay_now" or "pay_after_confirmation"
-  const [paymentChoice, setPaymentChoice] = useState<"pay_now" | "pay_after_confirmation">("pay_now");
+  const [paymentChoice, setPaymentChoice] = useState<"pay_now" | "pay_after_confirmation" | "pay_at_location">("pay_now");
 
   const calculateEndTime = (startTime: string, durationMinutes: number): string => {
     const [hours, minutes] = startTime.split(":").map(Number);
@@ -2409,6 +2410,19 @@ export default function ServiceDetail() {
                             <CreditCard className={`h-5 w-5 mb-1 ${paymentChoice === "pay_now" ? "text-primary" : "text-muted-foreground"}`} />
                             <p className="text-sm font-medium">Pay Now</p>
                             <p className="text-xs text-muted-foreground">Secure your spot instantly</p>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPaymentChoice("pay_at_location")}
+                            className={`p-3 rounded-lg border-2 text-left transition-all ${
+                              paymentChoice === "pay_at_location"
+                                ? "border-primary bg-primary/5"
+                                : "border-muted hover:border-muted-foreground/30"
+                            }`}
+                          >
+                            <MapPin className={`h-5 w-5 mb-1 ${paymentChoice === "pay_at_location" ? "text-primary" : "text-muted-foreground"}`} />
+                            <p className="text-sm font-medium">Pay at Location</p>
+                            <p className="text-xs text-muted-foreground">Pay the provider in person</p>
                           </button>
                           <button
                             type="button"

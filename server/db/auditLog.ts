@@ -40,7 +40,10 @@ export type AuditAction =
   | "send_provider_survey"
   | "payment_velocity_blocked"
   | "update_payment_velocity_controls"
-  | "release_payment_velocity_cooldown";
+  | "release_payment_velocity_cooldown"
+  | "update_pay_at_location_settings"
+  | "confirm_pay_at_location_payment"
+  | "waive_pay_at_location_payment";
 
 export type TargetType = "user" | "provider" | "review" | "booking" | "document" | "system" | "terms_version";
 

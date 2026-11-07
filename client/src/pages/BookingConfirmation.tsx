@@ -131,6 +131,10 @@ export default function BookingConfirmation() {
     { id: booking?.providerId || 0 },
     { enabled: !!booking }
   );
+  const { data: offlinePayment } = trpc.offlinePayment.getForBooking.useQuery(
+    { bookingId: booking?.id || 0 },
+    { enabled: !!booking }
+  );
 
   if (isLoading) {
     return (
@@ -230,6 +234,20 @@ export default function BookingConfirmation() {
       )}
 
       <div className="container py-12 max-w-3xl">
+        {offlinePayment ? (
+          <Card className="mb-6 border-amber-200 bg-amber-50/70">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Pay at Location</CardTitle>
+              <CardDescription>Payment status: <span className="font-semibold capitalize">{offlinePayment.status}</span></CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>Amount due: <span className="font-semibold">{formatPrice(Number(offlinePayment.originalAmountDue))}</span></p>
+              {offlinePayment.providerInstructions ? <p className="text-muted-foreground">Provider instructions: {offlinePayment.providerInstructions}</p> : null}
+              <p className="text-xs text-muted-foreground">Only the provider or an authorized administrator can record payment or waive this amount.</p>
+            </CardContent>
+          </Card>
+        ) : null}
+
         {/* Success Message */}
         <div className="text-center mb-8">
           <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${

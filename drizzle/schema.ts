@@ -1652,3 +1652,54 @@ export const providerSurveyResponses = mysqlTable("provider_survey_responses", {
 ]);
 export type ProviderSurveyResponse = typeof providerSurveyResponses.$inferSelect;
 export type InsertProviderSurveyResponse = typeof providerSurveyResponses.$inferInsert;
+
+/**
+ * Pay-at-Location ledger. This table is intentionally separate from Stripe payments.
+ */
+export const offlineBookingPayments = mysqlTable("offline_booking_payments", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("bookingId").notNull().unique().references(() => bookings.id),
+  paymentMethod: mysqlEnum("paymentMethod", ["pay_at_location"]).default("pay_at_location").notNull(),
+  status: mysqlEnum("status", ["due", "paid", "waived"]).default("due").notNull(),
+  originalAmountDue: decimal("originalAmountDue", { precision: 10, scale: 2 }).notNull(),
+  amountReceived: decimal("amountReceived", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  offlinePaymentMethod: mysqlEnum("offlinePaymentMethod", ["cash", "bank_transfer", "mobile_money", "other"]),
+  paidAt: timestamp("paidAt"),
+  confirmedByUserId: int("confirmedByUserId").references(() => users.id),
+  paymentNote: text("paymentNote"),
+  waiverAmount: decimal("waiverAmount", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  waiverReason: text("waiverReason"),
+  waivedByUserId: int("waivedByUserId").references(() => users.id),
+  waivedAt: timestamp("waivedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  statusIdx: index("offline_payment_status_idx").on(table.status),
+  confirmedByIdx: index("offline_payment_confirmed_by_idx").on(table.confirmedByUserId),
+}));
+export type OfflineBookingPayment = typeof offlineBookingPayments.$inferSelect;
+export type InsertOfflineBookingPayment = typeof offlineBookingPayments.$inferInsert;
+
+export const providerPayAtLocationSettings = mysqlTable("provider_pay_at_location_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  providerId: int("providerId").notNull().unique().references(() => serviceProviders.id),
+  enabled: boolean("enabled").default(false).notNull(),
+  instructions: text("instructions"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProviderPayAtLocationSettings = typeof providerPayAtLocationSettings.$inferSelect;
+export type InsertProviderPayAtLocationSettings = typeof providerPayAtLocationSettings.$inferInsert;
+
+export const providerPayAtLocationServices = mysqlTable("provider_pay_at_location_services", {
+  id: int("id").autoincrement().primaryKey(),
+  providerId: int("providerId").notNull().references(() => serviceProviders.id),
+  serviceId: int("serviceId").notNull().references(() => services.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  providerServiceUnique: unique("provider_pay_location_service_unique").on(table.providerId, table.serviceId),
+  providerIdx: index("provider_pay_location_provider_idx").on(table.providerId),
+  serviceIdx: index("provider_pay_location_service_idx").on(table.serviceId),
+}));
+export type ProviderPayAtLocationService = typeof providerPayAtLocationServices.$inferSelect;
+export type InsertProviderPayAtLocationService = typeof providerPayAtLocationServices.$inferInsert;

@@ -33,6 +33,7 @@ export const bookingRouter = router({
       totalAmount: z.string().optional(),
       depositAmount: z.string().optional(),
       remainingAmount: z.string().optional(),
+      paymentMethod: z.enum(["online", "pay_at_location"]).default("online"),
     }))
     .mutation(async ({ ctx, input }) => {
       const service = await db.getServiceById(input.serviceId);
@@ -53,6 +54,11 @@ export const bookingRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "The provider does not match this service." });
       }
       const providerId = service.providerId;
+      const payAtLocation = input.paymentMethod === "pay_at_location";
+      const payAtLocationSettings = payAtLocation ? await db.getProviderPayAtLocationSettings(providerId) : null;
+      if (payAtLocation && (!payAtLocationSettings?.enabled || !payAtLocationSettings.serviceIds.includes(service.id))) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Pay at Location is not available for this service." });
+      }
       let interval;
       try {
         interval = resolveAuthoritativeBookingInterval({
@@ -196,6 +202,7 @@ export const bookingRouter = router({
       
       const booking = await db.getBookingById(bookingId);
       if (!booking) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to retrieve created booking" });
+      if (payAtLocation) await db.createOfflinePayment(bookingId, totalAmount);
       queueCrmBookingProjection(bookingId);
 
       // Record promo code redemption
@@ -283,7 +290,7 @@ export const bookingRouter = router({
       } catch (err) {
         console.error("[Booking] Notification send failed (non-blocking):", err);
       }
-      return booking;
+      return { ...booking, paymentMethod: payAtLocation ? "pay_at_location" : "online", offlinePaymentStatus: payAtLocation ? "due" : null };
     }),
     
   getById: protectedProcedure
