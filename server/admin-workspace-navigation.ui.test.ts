@@ -28,7 +28,7 @@ function choose(name: string) {
 describe("admin grouped navigation", () => {
   it("keeps all operations tools but hides owner entries and falls back on an owner deep link", () => {
     render(React.createElement(Workspace, { initial: "partner" }));
-    expect(screen.getAllByRole("tab")).toHaveLength(14);
+    expect(screen.getAllByRole("tab")).toHaveLength(15);
     expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
     for (const name of ["Partner Split", "Team", "Legal Terms", "Customers Rollout"]) expect(screen.queryByRole("tab", { name })).toBeNull();
     choose("Bookings");
@@ -36,7 +36,7 @@ describe("admin grouped navigation", () => {
   });
   it("shows the four existing owner entries only to owners without removing operations", () => {
     render(React.createElement(Workspace, { owner: true }));
-    expect(screen.getAllByRole("tab")).toHaveLength(18);
+    expect(screen.getAllByRole("tab")).toHaveLength(19);
     expect(screen.getByRole("group", { name: "Owner Controls" })).toBeInTheDocument();
     choose("Customers Rollout");
     expect(screen.getByRole("tabpanel")).toHaveTextContent("Customers Rollout workspace");
@@ -47,7 +47,7 @@ describe("admin grouped navigation", () => {
     expect(screen.queryByRole("tablist")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Admin sections — Overview" }));
     const dialog = screen.getByRole("dialog", { name: "Admin sections" });
-    expect(within(dialog).getAllByRole("tab")).toHaveLength(18);
+    expect(within(dialog).getAllByRole("tab")).toHaveLength(19);
     const header = within(dialog).getByRole("heading", { name: "Admin sections" }).closest('[data-slot="sheet-header"]');
     expect(header).not.toBeNull();
     expect(within(header as HTMLElement).getByText("Choose a workspace.")).toBeVisible();

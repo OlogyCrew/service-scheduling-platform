@@ -1,4 +1,4 @@
-import { Activity, Bell, Briefcase, CalendarDays, ClipboardList, Crown, FileText, LayoutDashboard, MessageSquare, Settings, Share2, Shield, ShieldCheck, Star, UserPlus, Users, Wallet } from "lucide-react";
+import { Activity, Bell, Briefcase, CalendarDays, ClipboardList, Crown, FileText, LayoutDashboard, MessageSquare, Settings, Share2, Shield, ShieldAlert, ShieldCheck, Star, UserPlus, Users, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type AdminNavItem = { id: string; label: string; icon: LucideIcon };
@@ -18,7 +18,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     { id: "social-media", label: "Social Media", icon: Share2 },
   ] },
   { label: "Platform", items: [
-    { id: "audit", label: "Audit Log", icon: Activity }, { id: "settings", label: "Settings", icon: Settings },
+    { id: "payment-security", label: "Payment Security", icon: ShieldAlert }, { id: "audit", label: "Audit Log", icon: Activity }, { id: "settings", label: "Settings", icon: Settings },
   ] },
   { label: "Owner Controls", ownerOnly: true, items: [
     { id: "team", label: "Team", icon: Shield }, { id: "legal", label: "Legal Terms", icon: FileText },

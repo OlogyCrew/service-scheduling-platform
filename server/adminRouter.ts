@@ -10,11 +10,9 @@ import {
   getSubscriptionAnalytics as getEffectiveSubscriptionAnalytics,
 } from "./db/payments";
 import { hasAdminClearance, hasPartnerSplitAccess, isApprovedAdminEmail, isApprovedSuperAdminEmail, OPERATIONS_ADMIN_EMAIL } from "./adminPolicy";
-import {
-  isActiveReportableAdminProvider,
-  isActiveReportableAdminUser,
-  isReportableAdminIdentity,
-} from "../shared/adminDataScope";
+import { isActiveReportableAdminProvider, isActiveReportableAdminUser, isReportableAdminIdentity, } from "../shared/adminDataScope";
+import { getPaymentVelocityRules } from "./paymentVelocity";
+import { getPaymentVelocityCounters, releasePaymentVelocityCooldown } from "./db/paymentVelocity";
 
 function reportableAdminUsers(allUsers: any[], activeOnly: boolean) {
   return allUsers.filter((user) => activeOnly
@@ -85,6 +83,47 @@ export const adminRouter = router({
     const { getSystemHealthSnapshot } = await import("./systemHealth");
     return await getSystemHealthSnapshot(hasPartnerSplitAccess(ctx.user));
   }),
+
+  getPaymentVelocityMonitor: adminProcedure.query(async () => {
+    const [rules, counters] = await Promise.all([
+      getPaymentVelocityRules(),
+      getPaymentVelocityCounters(100),
+    ]);
+    const now = Date.now();
+    const sanitized = counters.map((counter) => ({
+      id: counter.id,
+      dimension: counter.dimension,
+      attemptCount: counter.attemptCount,
+      threshold: rules.thresholds[counter.dimension],
+      bucketStart: counter.bucketStart,
+      blockedUntil: counter.blockedUntil,
+      lastAttemptAt: counter.lastAttemptAt,
+      isBlocked: !!counter.blockedUntil && new Date(counter.blockedUntil).getTime() > now,
+    }));
+    return {
+      rules,
+      counters: sanitized,
+      summary: {
+        trackedDimensions: sanitized.length,
+        blockedDimensions: sanitized.filter((counter) => counter.isBlocked).length,
+        attemptsInView: sanitized.reduce((total, counter) => total + counter.attemptCount, 0),
+      },
+    };
+  }),
+
+  releasePaymentVelocityCooldown: adminProcedure
+    .input(z.object({ counterId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await releasePaymentVelocityCooldown(input.counterId);
+      await createAuditEntry({
+        actorId: ctx.user.id,
+        action: "release_payment_velocity_cooldown",
+        targetType: "system",
+        targetId: input.counterId,
+        details: { counterId: input.counterId },
+      });
+      return { success: true };
+    }),
 
   // List all users (with optional pagination)
   listUsers: adminProcedure

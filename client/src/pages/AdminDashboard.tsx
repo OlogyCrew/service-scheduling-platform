@@ -82,6 +82,7 @@ import { AdminNavigation } from "./admin/AdminNavigation";
 import { getAdminSectionLabel, resolveAdminSection } from "./admin/adminNavigation";
 import { AdminBookingsPanel } from "./admin/AdminBookingsPanel";
 import { ProviderSurveyPanel } from "./admin/ProviderSurveyPanel";
+import { PaymentSecurityPanel } from "./admin/PaymentSecurityPanel";
 import "./admin/AdminWorkspace.css";
 
 function SystemHealthOverview() {
@@ -786,6 +787,10 @@ export default function AdminDashboard() {
           {/* Audit Log Tab */}
           <TabsContent value="audit" aria-labelledby="admin-section-heading">
             <AuditLogPanel />
+          </TabsContent>
+
+          <TabsContent value="payment-security" aria-labelledby="admin-section-heading">
+            <PaymentSecurityPanel />
           </TabsContent>
 
           {/* Partner Revenue Split Tab */}

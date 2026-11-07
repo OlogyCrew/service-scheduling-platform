@@ -8,8 +8,8 @@ describe("admin workspace layout and palette boundaries", () => {
   it("groups navigation, retains all section IDs, and normalizes unknown and owner-only links", async () => {
     const { ADMIN_NAV_GROUPS, resolveAdminSection } = await import("../client/src/pages/admin/adminNavigation");
     const ids = ADMIN_NAV_GROUPS.flatMap(group => group.items.map(item => item.id));
-    expect(new Set(ids).size).toBe(18);
-    for (const id of ["overview", "users", "providers", "bookings", "subscriptions", "reviews", "documents", "support", "referrals", "provider-survey", "push", "social-media", "audit", "settings", "team", "legal", "partner", "customers-pilot"]) expect(ids).toContain(id);
+    expect(new Set(ids).size).toBe(19);
+    for (const id of ["overview", "users", "providers", "bookings", "subscriptions", "reviews", "documents", "support", "referrals", "provider-survey", "push", "social-media", "payment-security", "audit", "settings", "team", "legal", "partner", "customers-pilot"]) expect(ids).toContain(id);
     for (const id of ["team", "legal", "partner", "customers-pilot"]) {
       expect(resolveAdminSection(id, false)).toBe("overview");
       expect(resolveAdminSection(id, true)).toBe(id);
