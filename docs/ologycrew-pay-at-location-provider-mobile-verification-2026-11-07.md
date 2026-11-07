@@ -74,6 +74,8 @@ The supplied screenshots verify:
 
 No role switch, provider activation, setting save, payment confirmation, waiver, or test record creation was attempted. This completes the provider settings mobile review; Mark as Paid and Waive remain unverified because no offline payment obligation exists for Chisolm Audio.
 
+The owner also supplied five authenticated landscape screenshots (`IMG_0040.png` through `IMG_0044.png`) at 2556 × 1179 pixels. The Pay-at-Location heading, disabled switch, customer-instructions area, eligible-service rows, and Save button remain readable and inside the content area. The fixed bottom navigation remains visible and does not cover the Pay-at-Location controls shown in the screenshots. In the lower Service options screenshot, the fixed navigation covers part of the card’s lower content while the page is scrolled; this is a general sticky-navigation observation, not a Pay-at-Location control defect. The screenshots provide landscape evidence but do not establish an exact 768px CSS viewport.
+
 The source implementation does contain the expected labels and authorization boundaries, including provider-only settings and provider/admin-only payment confirmation and waiver operations, but source inspection is not a substitute for an authenticated mobile rendering test.
 
 ## Final assessment
@@ -86,6 +88,7 @@ The source implementation does contain the expected labels and authorization bou
 | Provider guide remains unpublished | **PASS** |
 | Authenticated provider dashboard and settings labels | **PASS** |
 | Provider-dashboard mobile settings review | **PASS — owner-supplied iPhone screenshots** |
+| Provider-dashboard landscape review | **PASS — owner-supplied screenshots** |
 | Mark as Paid / Waive on an offline obligation | **NOT VERIFIED — no offline obligation exists** |
 | Stripe, payout, credential, and incident settings unchanged | **PASS / no action taken** |
 | Pilot provider selection or activation | **NOT PERFORMED** |
