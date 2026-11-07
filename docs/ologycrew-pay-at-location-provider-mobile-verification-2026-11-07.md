@@ -93,6 +93,21 @@ The source implementation does contain the expected labels and authorization bou
 | Stripe, payout, credential, and incident settings unchanged | **PASS / no action taken** |
 | Pilot provider selection or activation | **NOT PERFORMED** |
 
+## Non-production offline-payment release-gate tests
+
+The focused non-production suite was rerun serially after the mobile review:
+
+- `pay-at-location-database.test.ts`: 4 passed
+- `pay-at-location-remediation.test.ts`: 5 passed
+- `pay-at-location-stage4-preview.contract.test.ts`: 8 passed
+- `pay-at-location-stripe-isolation.test.ts`: 4 passed
+- `pay-at-location.contract.test.ts`: 3 passed
+- **Total: 5 test files, 24 tests passed**
+
+The run covered direct, quote, recurring, and multi-day offline obligations; customer read-only restrictions; provider confirmation; duplicate settlement prevention; waiver authorization and required reasons; complete audit details; audit-failure rollback; disabled-settings history preservation; webhook separation; and negative Stripe side-effect assertions. Test cleanup found no remaining synthetic test accounts. No production offline obligation or provider setting was created.
+
+Vitest reported its existing non-failing close-handle/Vite shutdown warning after the passing tests; it did not produce a test failure.
+
 ## Recommended next step
 
 Use a dedicated non-production provider account or an authenticated provider preview session. Verify the seven exact labels at 390px and 768px, inspect eligible-service selection and settings controls, and capture screenshots without saving any production setting. Only after that review should the provider guide be considered for publication. Pilot activation remains a separate owner approval.
