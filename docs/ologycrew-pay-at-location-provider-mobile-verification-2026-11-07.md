@@ -108,6 +108,21 @@ The run covered direct, quote, recurring, and multi-day offline obligations; cus
 
 Vitest reported its existing non-failing close-handle/Vite shutdown warning after the passing tests; it did not produce a test failure.
 
+## Isolated payment-action walkthrough
+
+The database-backed walkthrough was rerun separately for the requested release gate:
+
+- **2 test files passed; 9 tests passed.**
+- A synthetic customer could read the obligation but could not confirm it.
+- The synthetic provider confirmed a full **$101.00 cash** payment.
+- A duplicate confirmation on the settled obligation was rejected.
+- A separate synthetic obligation was waived for **$202.00** with a mandatory reason.
+- Confirmation and waiver audit entries recorded the amount, resulting status, payment/waiver details, timestamp, and authorizing actor.
+- Disabling provider Pay-at-Location settings did not remove the existing offline history.
+- Test cleanup completed without leaving synthetic accounts or obligations.
+
+This verifies the payment-action and audit behavior in the isolated database-backed test environment. No visual payment-action walkthrough was performed against a production or Chisolm Audio booking, and no production offline obligation was created.
+
 ## Recommended next step
 
 Use a dedicated non-production provider account or an authenticated provider preview session. Verify the seven exact labels at 390px and 768px, inspect eligible-service selection and settings controls, and capture screenshots without saving any production setting. Only after that review should the provider guide be considered for publication. Pilot activation remains a separate owner approval.
