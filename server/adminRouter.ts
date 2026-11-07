@@ -84,27 +84,42 @@ export const adminRouter = router({
     return await getSystemHealthSnapshot(hasPartnerSplitAccess(ctx.user));
   }),
 
-  getPaymentVelocityMonitor: adminProcedure.query(async () => {
-    const [rules, counters] = await Promise.all([
+  getPaymentVelocityMonitor: adminProcedure
+    .input(z.object({
+      startDate: z.coerce.date().optional(),
+      endDate: z.coerce.date().optional(),
+      dimension: z.enum(["account", "email", "stripe_customer", "provider", "booking", "ip"]).optional(),
+      status: z.enum(["all", "blocked", "monitoring"]).default("all"),
+      rule: z.enum(["account_attempt_threshold", "email_attempt_threshold", "stripe_customer_attempt_threshold", "provider_attempt_threshold", "booking_attempt_threshold", "ip_attempt_threshold"]).optional(),
+      page: z.number().int().min(1).default(1),
+      limit: z.number().int().min(1).max(100).default(25),
+    }).optional())
+    .query(async ({ input }) => {
+    const [rules, result] = await Promise.all([
       getPaymentVelocityRules(),
-      getPaymentVelocityCounters(100),
+      getPaymentVelocityCounters(input || {}),
     ]);
     const now = Date.now();
-    const sanitized = counters.map((counter) => ({
+    const sanitized = result.items.map((counter) => ({
       id: counter.id,
       dimension: counter.dimension,
+      triggeredRule: `${counter.dimension}_attempt_threshold`,
+      restrictionType: "payment_attempt_cooldown" as const,
+      restrictionScope: counter.dimension === "account" ? "account-scoped payment attempts" : "dimension-scoped payment attempts",
       attemptCount: counter.attemptCount,
       threshold: rules.thresholds[counter.dimension],
       bucketStart: counter.bucketStart,
       blockedUntil: counter.blockedUntil,
       lastAttemptAt: counter.lastAttemptAt,
+      updatedAt: counter.updatedAt,
       isBlocked: !!counter.blockedUntil && new Date(counter.blockedUntil).getTime() > now,
     }));
     return {
       rules,
       counters: sanitized,
+      pagination: { page: result.page, limit: result.limit, total: result.total, totalPages: result.totalPages },
       summary: {
-        trackedDimensions: sanitized.length,
+        trackedDimensions: result.total,
         blockedDimensions: sanitized.filter((counter) => counter.isBlocked).length,
         attemptsInView: sanitized.reduce((total, counter) => total + counter.attemptCount, 0),
       },
@@ -112,17 +127,29 @@ export const adminRouter = router({
   }),
 
   releasePaymentVelocityCooldown: adminProcedure
-    .input(z.object({ counterId: z.number().int().positive() }))
+    .input(z.object({
+      counterId: z.number().int().positive(),
+      expectedUpdatedAt: z.coerce.date(),
+      expectedBlockedUntil: z.coerce.date(),
+      reason: z.string().trim().min(3, "A reason is required").max(500),
+    }))
     .mutation(async ({ ctx, input }) => {
-      await releasePaymentVelocityCooldown(input.counterId);
+      const result = await releasePaymentVelocityCooldown(input);
       await createAuditEntry({
         actorId: ctx.user.id,
         action: "release_payment_velocity_cooldown",
         targetType: "system",
         targetId: input.counterId,
-        details: { counterId: input.counterId },
+        details: {
+          counterId: input.counterId,
+          restrictionType: "payment_attempt_cooldown",
+          restrictionStateVerified: true,
+          reason: input.reason.trim(),
+          releasedAt: result.releasedAt.toISOString(),
+          outcome: "released",
+        },
       });
-      return { success: true };
+      return { success: true, releasedAt: result.releasedAt };
     }),
 
   // List all users (with optional pagination)
