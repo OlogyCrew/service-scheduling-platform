@@ -248,7 +248,7 @@ const guideSections: GuideSection[] = [
       {
         title: "Provider Onboarding",
         content:
-          "There are two ways to become a provider: choose Provider at sign-up, or select Become a Provider from your profile. The onboarding wizard covers your profile, categories, services, availability, and plan. Starter is available now, and the no-card local trial can still be created. Paid Pro/Business checkout, Stripe Connect setup, and online provider payment collection are temporarily unavailable while Stripe reviews OlogyCrew's account. You can finish your profile and return to payment setup after Stripe restores service.",
+          "There are two ways to become a provider: choose Provider at sign-up, or select Become a Provider from your profile. The onboarding wizard covers your profile, categories, services, availability, and plan. Starter is available now, while all new trials, paid Pro/Business checkout, Stripe Connect setup, and online provider payment collection are temporarily unavailable while Stripe reviews OlogyCrew's account. You can finish your profile and return to paid setup after Stripe restores service.",
         link: "/provider/onboarding",
         linkText: "Start Onboarding",
       },
@@ -350,7 +350,7 @@ const guideSections: GuideSection[] = [
       {
         title: "14-Day Pro Trial",
         content:
-             "New providers can start a free 14-day local Pro trial without a credit card. The trial records access locally, but Stripe-backed provider payment collection is not available during the current account review. If the trial expires without a paid subscription, the account returns to Starter. Paid Pro/Business checkout and billing changes will be restored only after Stripe approves service.",
+             "New provider trials are temporarily suspended while Stripe reviews OlogyCrew's account. Starter setup remains available. Existing trial and subscription records remain readable and are not automatically cancelled or changed. Paid Pro/Business checkout and billing changes will be restored only after Stripe approves service.",
         link: "/provider/subscription",
         linkText: "Manage Subscription",
       },
@@ -387,7 +387,7 @@ const guideSections: GuideSection[] = [
       {
         title: "Provider Subscription Plans",
         content:
-          "Providers can choose from three subscription tiers. During the current Stripe review, Starter and local no-card trial flows remain available, while paid checkout, billing changes, and Stripe-backed payment features are paused. Existing paid subscription records remain read-only until service is restored.\n\n• Starter (Free) — 1 service category, up to 3 services, 1 photo per service, basic profile, standard search placement\n\n• Pro ($12/mo or $10.08/mo billed annually) — Up to 5 categories, up to 10 services, 3 photos per service, custom URL slug, priority search placement, analytics dashboard\n\n• Business ($20/mo or $16.00/mo billed annually) — Unlimited categories, unlimited services, 5 photos per service, featured listing badge, top search placement, full analytics, custom branding, priority support\n\nSave up to 20% by choosing annual billing (16% off Pro, 20% off Business)! Use the Monthly/Annual toggle on the pricing page to compare. New providers can start a free 14-day Pro trial — no credit card required — to experience all Pro features before committing.",
+          "Providers can choose from three subscription tiers. During the current Stripe review, Starter setup remains available, while new trials, paid checkout, billing changes, and Stripe-backed payment features are paused. Existing trial and paid subscription records remain visible and are not automatically cancelled or changed.\n\n• Starter (Free) — 1 service category, up to 3 services, 1 photo per service, basic profile, standard search placement\n\n• Pro ($12/mo or $10.08/mo billed annually) — Up to 5 categories, up to 10 services, 3 photos per service, custom URL slug, priority search placement, analytics dashboard\n\n• Business ($20/mo or $16.00/mo billed annually) — Unlimited categories, unlimited services, 5 photos per service, featured listing badge, top search placement, full analytics, custom branding, priority support\n\nSave up to 20% by choosing annual billing (16% off Pro, 20% off Business)! Use the Monthly/Annual toggle on the pricing page to compare. New trials and paid service will be announced only after Stripe review is complete.",
         link: "/provider/subscription",
         linkText: "Manage Subscription",
       },

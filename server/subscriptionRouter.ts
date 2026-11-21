@@ -13,7 +13,7 @@ import { getSubscriptionAnalytics as getEffectiveSubscriptionAnalytics } from ".
 import { createSubscriptionInAppNotice } from "./subscriptionNotifications";
 import { assertProviderPaymentActor } from "./paymentAuthorization";
 import { assertPaymentVelocityAllowed, throwIfPaymentVelocityBlocked } from "./paymentVelocity";
-import { assertPlatformSubscriptionBillingOpen } from "./providerPaymentPause";
+import { assertPlatformSubscriptionBillingOpen, assertProviderTrialStartOpen } from "./providerPaymentPause";
 
 const stripe = new Stripe(ENV.stripeSecretKey, {
   apiVersion: "2026-01-28.clover" as any,
@@ -80,6 +80,8 @@ export const subscriptionRouter = router({
       tier: z.enum(["basic", "premium"]).default("basic"),
     }).optional())
     .mutation(async ({ ctx, input }) => {
+    // Reject before provider lookup, subscription reads/writes, or notification side effects.
+    assertProviderTrialStartOpen();
     const provider = await db.getProviderByUserId(ctx.user.id);
     if (!provider) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });

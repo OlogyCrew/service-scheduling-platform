@@ -190,7 +190,7 @@ export default function SignUp() {
             <p className="text-xs text-blue-700">
               {selectedPlan.price === "0" || selectedPlan.price === "0.00"
                 ? "Free forever — no credit card required."
-                : `$${selectedPlan.price}/${selectedPlan.interval === "year" ? "yr" : "mo"} — 14-day free trial, no card required to start.`}
+                : `$${selectedPlan.price}/${selectedPlan.interval === "year" ? "yr" : "mo"} — trials are temporarily suspended during the Stripe account review.`}
             </p>
             <p className="text-xs text-blue-600 mt-1">
               Create your account below and your plan will be ready after setup.

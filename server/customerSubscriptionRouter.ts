@@ -11,6 +11,7 @@ import { isStripeResourceMissing, requireStripeSubscriptionPeriodEnd } from "./s
 import { createSubscriptionInAppNotice } from "./subscriptionNotifications";
 import { assertPaymentActorCanInitiate } from "./paymentAuthorization";
 import { assertPaymentVelocityAllowed, throwIfPaymentVelocityBlocked } from "./paymentVelocity";
+import { assertAllTrialStartOpen } from "./providerPaymentPause";
 
 const stripe = new Stripe(ENV.stripeSecretKey, { apiVersion: "2026-01-28.clover" as any });
 
@@ -690,6 +691,8 @@ export const customerSubscriptionRouter = router({
       tier: z.enum(["pro", "business"]).default("pro"),
     }))
     .mutation(async ({ ctx, input }) => {
+      // Reject before subscription reads/writes or trial notifications.
+      assertAllTrialStartOpen();
       // Check if already has an active/trialing subscription
       const existing = await db.getCustomerSubscription(ctx.user.id);
       if (existing && existing.status === "trialing") {

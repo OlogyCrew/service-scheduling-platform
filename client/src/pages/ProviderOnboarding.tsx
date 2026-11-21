@@ -45,7 +45,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { MessageSquareQuote, HelpCircle, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { formatPrice } from "@shared/formatPrice";
 import { CATEGORY_ICONS } from "@/lib/categoryIcons";
-import { PLATFORM_SUBSCRIPTIONS_PAUSED, PLATFORM_SUBSCRIPTION_PAUSE_DETAIL, PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
+import { PLATFORM_SUBSCRIPTIONS_PAUSED, PLATFORM_SUBSCRIPTION_PAUSE_DETAIL, PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE, PROVIDER_TRIALS_PAUSED, PROVIDER_TRIAL_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 
 // ============================================================================
 // CATEGORY ICON MAP — visual icons for each category
@@ -1590,7 +1590,7 @@ export default function ProviderOnboarding() {
                     <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
                       <Badge className="bg-primary text-primary-foreground border-0 shadow-sm whitespace-nowrap text-[10px] px-2">Your Selected Plan</Badge>
                     </div>
-                  ) : !hasUsedTrial ? (
+                  ) : !hasUsedTrial && !PROVIDER_TRIALS_PAUSED ? (
                     <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] px-2">14-Day Free Trial</Badge>
                   ) : null}
                   <div className="flex items-center gap-2 mb-3">
@@ -1639,8 +1639,8 @@ export default function ProviderOnboarding() {
                         Current Plan
                       </Button>
                     ) : (
-                      <Button variant="outline" size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); setSelectedTier("basic"); if (!existingProvider) setCurrentStep(2); }}>
-                        {!hasUsedTrial ? "Start Free Trial" : "Select Pro"}
+                      <Button variant="outline" size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); setSelectedTier("basic"); if (!existingProvider) setCurrentStep(2); }} disabled={PROVIDER_TRIALS_PAUSED}>
+                        {PROVIDER_TRIALS_PAUSED ? "Unavailable during review" : !hasUsedTrial ? "Start Free Trial" : "Select Pro"}
                       </Button>
                     )}
                   </div>
@@ -1663,7 +1663,7 @@ export default function ProviderOnboarding() {
                     <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
                       <Badge className="bg-amber-500 text-white border-0 shadow-sm whitespace-nowrap text-[10px] px-2">Your Selected Plan</Badge>
                     </div>
-                  ) : !hasUsedTrial ? (
+                  ) : !hasUsedTrial && !PROVIDER_TRIALS_PAUSED ? (
                     <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] px-2">14-Day Free Trial</Badge>
                   ) : null}
                   <div className="flex items-center gap-2 mb-3">
@@ -1712,41 +1712,27 @@ export default function ProviderOnboarding() {
                         Current Plan
                       </Button>
                     ) : (
-                      <Button variant="outline" size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); setSelectedTier("premium"); if (!existingProvider) setCurrentStep(2); }}>
-                        {!hasUsedTrial ? "Start Free Trial" : "Select Business"}
+                      <Button variant="outline" size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); setSelectedTier("premium"); if (!existingProvider) setCurrentStep(2); }} disabled={PROVIDER_TRIALS_PAUSED}>
+                        {PROVIDER_TRIALS_PAUSED ? "Unavailable during review" : !hasUsedTrial ? "Start Free Trial" : "Select Business"}
                       </Button>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* 14-day Pro Trial Banner */}
-              {!hasUsedTrial && !selectedTier && (!currentSubscription?.subscription || currentSubscription?.currentTier === "free") && (
+              {/* New-trial pause notice */}
+              {PROVIDER_TRIALS_PAUSED && !hasUsedTrial && !selectedTier && (!currentSubscription?.subscription || currentSubscription?.currentTier === "free") && (
                 <div className="p-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-primary/10 border border-blue-500/20">
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
                       <Zap className="h-4 w-4 text-blue-500" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-sm">Try Pro free for 14 days</h4>
+                      <h4 className="font-semibold text-sm">New provider trials are paused</h4>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Get up to 5 categories, 10 service listings, priority search placement, business analytics, and a custom profile URL.
-                        No credit card required — automatically reverts to Starter if you don't subscribe.
+                        {PROVIDER_TRIAL_PAUSE_MESSAGE} Starter setup remains available, and existing subscription records are not changed.
                       </p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
-                      onClick={() => { if (!existingProvider) { setSelectedTier("basic"); setCurrentStep(2); } else { startTrial.mutate(); } }}
-                      disabled={startTrial.isPending}
-                    >
-                      {startTrial.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        "Start Free Trial"
-                      )}
-                    </Button>
                   </div>
                 </div>
               )}
@@ -1801,10 +1787,10 @@ export default function ProviderOnboarding() {
                           startTrial.mutate({ tier: "basic" });
                         }
                       }}
-                      disabled={startTrial.isPending}
+                      disabled={PROVIDER_TRIALS_PAUSED || startTrial.isPending}
                     >
                       {startTrial.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      {!hasUsedTrial ? "Start 14-Day Pro Trial" : "Select Pro"}
+                      {PROVIDER_TRIALS_PAUSED ? "Unavailable during review" : !hasUsedTrial ? "Start 14-Day Pro Trial" : "Select Pro"}
                       <ChevronRight className="h-4 w-4 ml-1" />
                     </Button>
                   ) : selectedTier === "premium" ? (
@@ -1816,10 +1802,10 @@ export default function ProviderOnboarding() {
                           startTrial.mutate({ tier: "premium" });
                         }
                       }}
-                      disabled={startTrial.isPending}
+                      disabled={PROVIDER_TRIALS_PAUSED || startTrial.isPending}
                     >
                       {startTrial.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      {!hasUsedTrial ? "Start 14-Day Business Trial" : "Select Business"}
+                      {PROVIDER_TRIALS_PAUSED ? "Unavailable during review" : !hasUsedTrial ? "Start 14-Day Business Trial" : "Select Business"}
                       <ChevronRight className="h-4 w-4 ml-1" />
                     </Button>
                   ) : (

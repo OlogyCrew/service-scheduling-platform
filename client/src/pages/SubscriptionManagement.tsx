@@ -37,7 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PROVIDER_PLANS } from "@shared/entitlements";
-import { PLATFORM_SUBSCRIPTIONS_PAUSED, PLATFORM_SUBSCRIPTION_PAUSE_DETAIL, PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
+import { PLATFORM_SUBSCRIPTIONS_PAUSED, PLATFORM_SUBSCRIPTION_PAUSE_DETAIL, PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE, PROVIDER_TRIALS_PAUSED, PROVIDER_TRIAL_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 import "./SubscriptionManagement.css";
 
 const PLANS = [
@@ -73,7 +73,7 @@ const PLANS = [
     description: "For providers offering multiple service categories — grow your reach.",
     icon: Zap,
     features: [
-      { text: "14-day free trial", included: true },
+      { text: "Free trial (temporarily unavailable)", included: false },
       { text: `Up to ${PROVIDER_PLANS.basic.limits.maxCategories} service categories`, included: true },
       { text: `Up to ${PROVIDER_PLANS.basic.limits.maxServices} services`, included: true },
       { text: `${PROVIDER_PLANS.basic.limits.maxPhotosPerService} photos per service`, included: true },
@@ -98,7 +98,7 @@ const PLANS = [
     description: "Unlimited everything for established businesses and full-service pros.",
     icon: Crown,
     features: [
-      { text: "14-day free trial", included: true },
+      { text: "Free trial (temporarily unavailable)", included: false },
       { text: "Unlimited service categories", included: true },
       { text: "Unlimited services", included: true },
       { text: "5 photos per service", included: true },
@@ -270,7 +270,7 @@ export default function SubscriptionManagement() {
             <h1 className="text-2xl sm:text-3xl font-bold">My Provider Plan Subscription</h1>
           </div>
           <p className="text-muted-foreground text-lg">
-            Grow your business with more categories, services, and visibility. Starter setup and the no-card local trial remain available; paid checkout and Stripe-backed payment features are temporarily paused.
+            Grow your business with more categories, services, and visibility. Starter setup remains available; new trials, paid checkout, and Stripe-backed payment features are temporarily paused.
           </p>
         </div>
 
@@ -331,7 +331,7 @@ export default function SubscriptionManagement() {
                   <p className="text-xs text-muted-foreground">
                     {trialStatus.showUrgentNudge 
                       ? "Your trial is ending soon. Paid checkout is temporarily unavailable while Stripe reviews OlogyCrew's account."
-                      : "Enjoying your trial? Your trial remains available locally; paid checkout will return after Stripe review."}
+                      : "Your existing local trial remains readable during the review. New trials and paid checkout are paused until Stripe restores service."}
                   </p>
                 </div>
               </div>
@@ -353,28 +353,19 @@ export default function SubscriptionManagement() {
           </div>
         )}
 
-        {/* Start Trial CTA for free users who haven't tried yet */}
+        {/* New trial status for free users who have not already started one */}
         {currentTier === "free" && !trialStatus?.isTrialing && !trialStatus?.trialExpired && !trialStatus?.hasUsedTrial && (
           <div className="mb-6 p-4 rounded-lg border ology-provider-plan-trial-offer">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Zap className="h-5 w-5 shrink-0" />
                 <div>
-                  <p className="font-medium text-sm">Try Pro free for 14 days</p>
+                  <p className="font-medium text-sm">New provider trials are paused</p>
                   <p className="text-xs text-muted-foreground">
-                    No credit card required. Get 10 services, priority search, analytics, and custom URL.
+                    {PROVIDER_TRIAL_PAUSE_MESSAGE} Starter remains available, and existing trial records are not changed.
                   </p>
                 </div>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="shrink-0 ology-provider-plan-trial-action"
-                onClick={() => startTrial.mutate()}
-                disabled={startTrial.isPending}
-              >
-                {startTrial.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Start Free Trial"}
-              </Button>
             </div>
           </div>
         )}
@@ -633,13 +624,13 @@ export default function SubscriptionManagement() {
                         if (isDowngrade) {
                           setDowngradeTarget(plan.tier as "basic");
                           setShowDowngradeDialog(true);
-                        } else if (currentTier === "free" && trialStatus && !trialStatus.hasUsedTrial) {
+                        } else if (!PROVIDER_TRIALS_PAUSED && currentTier === "free" && trialStatus && !trialStatus.hasUsedTrial) {
                           startTrial.mutate({ tier: plan.tier as "basic" | "premium" });
                         } else {
                           handleSubscribe(plan.tier);
                         }
                       }}
-                      disabled={(!(!trialStatus?.hasUsedTrial && currentTier === "free") && paidBillingUnavailable) || subscribing === plan.tier || subscribe.isPending || startTrial.isPending || (downgrade.isPending && downgradeTarget === plan.tier)}
+                      disabled={(PROVIDER_TRIALS_PAUSED && currentTier === "free" && !trialStatus?.hasUsedTrial) || (!(!trialStatus?.hasUsedTrial && currentTier === "free") && paidBillingUnavailable) || subscribing === plan.tier || subscribe.isPending || startTrial.isPending || (downgrade.isPending && downgradeTarget === plan.tier)}
                     >
                       {subscribing === plan.tier || startTrial.isPending ? (
                         <>
@@ -648,6 +639,8 @@ export default function SubscriptionManagement() {
                         </>
                       ) : isDowngrade ? (
                         "Downgrade"
+                      ) : PROVIDER_TRIALS_PAUSED && currentTier === "free" && !trialStatus?.hasUsedTrial ? (
+                        "Unavailable during review"
                       ) : currentTier === "free" && trialStatus && !trialStatus.hasUsedTrial ? (
                         "Start Free Trial"
                       ) : (

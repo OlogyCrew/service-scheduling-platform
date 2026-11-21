@@ -18,8 +18,18 @@ export const PROVIDER_PAYMENT_PAUSE_POLICY_ID = "provider-collection-pause-2026-
  */
 export const PLATFORM_SUBSCRIPTIONS_PAUSED: boolean = true;
 export const PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE = "Paid subscriptions and Stripe account setup are temporarily unavailable while Stripe reviews OlogyCrew's account.";
-export const PLATFORM_SUBSCRIPTION_PAUSE_DETAIL = "Starter setup and the no-card local trial can still be created. Paid checkout, billing changes, and provider payment-account connections will remain unavailable until Stripe restores service.";
+export const PLATFORM_SUBSCRIPTION_PAUSE_DETAIL = "Starter setup remains available. New trials, paid checkout, billing changes, and provider payment-account connections are unavailable until Stripe restores service.";
 export const PLATFORM_SUBSCRIPTION_PAUSE_POLICY_ID = "platform-subscription-pause-2026-11-21";
+
+/**
+ * New provider trials are paused for the same Stripe account-review period.
+ * Existing trial/subscription records remain readable and are not rewritten.
+ */
+export const ALL_TRIALS_PAUSED: boolean = true;
+export const ALL_TRIAL_PAUSE_MESSAGE = "New trials are temporarily unavailable while Stripe reviews OlogyCrew's account.";
+export const PROVIDER_TRIALS_PAUSED: boolean = ALL_TRIALS_PAUSED;
+export const PROVIDER_TRIAL_PAUSE_MESSAGE = "New provider trials are temporarily unavailable while Stripe reviews OlogyCrew's account.";
+export const PROVIDER_TRIAL_PAUSE_POLICY_ID = "provider-trial-pause-2026-11-21";
 
 export function getProviderPaymentCollectionStatus() {
   return {

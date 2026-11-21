@@ -154,7 +154,7 @@ function BaselineTermsOfService() {
             </p>
             <h3 className="text-lg font-medium mt-4 mb-2">Free Trial</h3>
             <p className="text-muted-foreground leading-relaxed">
-              New service providers may be eligible for a 14-day free trial of the Pro plan. At the end of the trial period, your account will automatically revert to the Starter (free) plan unless you choose to subscribe. No payment information is required to start a trial.
+              New service providers may be eligible for a 14-day free trial of the Pro plan when trials are available. During the current Stripe account review, all new trials are suspended. Existing trial records remain governed by their recorded terms, and no payment information is required to start a trial when service is restored.
             </p>
             <h3 className="text-lg font-medium mt-4 mb-2">Cancellation and Downgrades</h3>
             <p className="text-muted-foreground leading-relaxed">

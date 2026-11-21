@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CUSTOMER_PLANS } from "@shared/entitlements";
+import { ALL_TRIALS_PAUSED, ALL_TRIAL_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 
 const PLANS = [
   {
@@ -61,7 +62,7 @@ const PLANS = [
     description: "Enhanced features for frequent users — save more, book faster.",
     icon: Star,
     features: [
-      { text: "14-day free trial", included: true },
+      { text: "Free trial (temporarily unavailable)", included: false },
       { text: `Save up to ${CUSTOMER_PLANS.pro.savedProviderLimit} providers`, included: true },
       { text: "Priority booking requests", included: true },
       { text: "Organize providers into folders", included: true },
@@ -82,7 +83,7 @@ const PLANS = [
     description: "Full access with analytics, exports, and unlimited providers.",
     icon: Crown,
     features: [
-      { text: "14-day free trial", included: true },
+      { text: "Free trial (temporarily unavailable)", included: false },
       { text: "Unlimited saved providers", included: true },
       { text: "Priority booking requests", included: true },
       { text: "Organize providers into folders", included: true },
@@ -285,8 +286,8 @@ export default function AccountSubscription() {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {trialStatus.showUrgentNudge 
-                      ? "Your trial is ending soon! Subscribe to keep your Coordinator features."
-                      : "Enjoying your trial? Subscribe anytime to keep access after it ends."}
+                      ? "Your trial is ending soon. Paid subscription changes remain unavailable while Stripe reviews OlogyCrew's account."
+                      : "Your existing trial remains readable. New trials and paid subscription changes are paused during the review."}
                   </p>
                 </div>
               </div>
@@ -308,28 +309,19 @@ export default function AccountSubscription() {
           </div>
         )}
 
-        {/* Start Trial CTA for free users who haven't tried yet */}
+        {/* New-trial pause notice for free users who have not already started one */}
         {currentTier === "free" && !trialStatus?.isTrialing && !trialStatus?.trialExpired && !trialStatus?.hasUsedTrial && (
           <div className="mb-6 p-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-primary/10 border border-blue-500/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Zap className="h-5 w-5 text-blue-500" />
                 <div>
-                  <p className="font-medium text-sm">Try Coordinator free for 14 days</p>
+                  <p className="font-medium text-sm">New customer trials are paused</p>
                   <p className="text-xs text-muted-foreground">
-                    No credit card required. Get 50 saved providers, priority booking, and provider folders.
+                    {ALL_TRIAL_PAUSE_MESSAGE} The Individual plan remains available, and existing subscription records are not changed.
                   </p>
                 </div>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="shrink-0 border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
-                onClick={() => startTrial.mutate({})}
-                disabled={startTrial.isPending}
-              >
-                {startTrial.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Start Free Trial"}
-              </Button>
             </div>
           </div>
         )}
@@ -585,13 +577,13 @@ export default function AccountSubscription() {
                         if (isDowngrade) {
                           setDowngradeTarget(plan.tier as "pro");
                           setShowDowngradeDialog(true);
-                        } else if (currentTier === "free" && trialStatus && !trialStatus.hasUsedTrial) {
+                        } else if (!ALL_TRIALS_PAUSED && currentTier === "free" && trialStatus && !trialStatus.hasUsedTrial) {
                           startTrial.mutate({ tier: plan.tier as "pro" | "business" });
                         } else {
                           handleSubscribe(plan.tier);
                         }
                       }}
-                      disabled={subscribing === plan.tier || subscribe.isPending || startTrial.isPending || (downgrade.isPending && downgradeTarget === plan.tier)}
+                      disabled={(ALL_TRIALS_PAUSED && currentTier === "free" && !trialStatus?.hasUsedTrial) || subscribing === plan.tier || subscribe.isPending || startTrial.isPending || (downgrade.isPending && downgradeTarget === plan.tier)}
                     >
                       {subscribing === plan.tier || startTrial.isPending ? (
                         <>
@@ -600,6 +592,8 @@ export default function AccountSubscription() {
                         </>
                       ) : isDowngrade ? (
                         "Downgrade"
+                      ) : ALL_TRIALS_PAUSED && currentTier === "free" && !trialStatus?.hasUsedTrial ? (
+                        "Unavailable during review"
                       ) : currentTier === "free" && trialStatus && !trialStatus.hasUsedTrial ? (
                         "Start Free Trial"
                       ) : (

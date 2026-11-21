@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CUSTOMER_PLANS, PROVIDER_PLANS } from "@shared/entitlements";
+import { ALL_TRIALS_PAUSED, ALL_TRIAL_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 import "./CustomerPricing.css";
 
 // ─── PROVIDER PLANS ────────────────────────────────────────────────────────────
@@ -512,12 +513,12 @@ export default function CustomerPricing() {
                                interval: yearly ? "year" : "month",
                              });
                            }}
-                           disabled={providerCreateCheckout.isPending}
+                           disabled={ALL_TRIALS_PAUSED || providerCreateCheckout.isPending}
                          >
                            {providerCreateCheckout.isPending ? (
                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
                            ) : null}
-                           {providerCreateCheckout.isPending ? "Loading..." : (!user ? "Start 14-Day Free Trial" : `Select ${plan.name}`)}
+                           {ALL_TRIALS_PAUSED ? "Unavailable during review" : providerCreateCheckout.isPending ? "Loading..." : (!user ? "Start 14-Day Free Trial" : `Select ${plan.name}`)}
                          </Button>
                        
                      )}
@@ -564,6 +565,9 @@ export default function CustomerPricing() {
               <p className="ology-pricing-context text-sm text-muted-foreground max-w-xl mx-auto">
                 Booking services on OlogyCrew is always free. Upgrade for priority access, organization tools, and analytics when you're managing multiple providers or large crews.
               </p>
+              <div role="status" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                {ALL_TRIAL_PAUSE_MESSAGE} Existing customer subscriptions remain readable and are not automatically changed.
+              </div>
             </div>
 
             <div className="ology-pricing-grid grid gap-6 md:grid-cols-3 mb-16">
@@ -665,8 +669,11 @@ export default function CustomerPricing() {
                         >
                           Downgrade
                         </Button>
+                      ) : audience === "customer" && ALL_TRIALS_PAUSED ? (
+                        <Button className="w-full" variant="outline" disabled>
+                          Trials unavailable during review
+                        </Button>
                       ) : (
-                        
                           <Button
                            className="w-full"
                            variant={plan.popular ? "default" : "outline"}
@@ -756,7 +763,7 @@ export default function CustomerPricing() {
                   },
                   {
                     q: "Is there a free trial for Pro?",
-                    a: "Yes — new providers get a 14-day free trial of the Pro plan to experience priority placement, analytics, and multi-category listings before committing.",
+                    a: "New provider trials are temporarily suspended while Stripe reviews OlogyCrew's account. Starter setup remains available, and existing subscription records are not automatically changed.",
                   },
                   {
                     q: "How do customers find my services?",
@@ -792,7 +799,7 @@ export default function CustomerPricing() {
                   },
                   {
                     q: "Is there a free trial for Coordinator or Manager?",
-                    a: "Yes! New customers get a 14-day free trial of Coordinator or Manager — no credit card required. At the end of the trial, you can subscribe to keep your features or automatically return to the Individual plan.",
+                    a: "New customer trials are temporarily suspended while Stripe reviews OlogyCrew's account. The Individual plan remains available, and existing subscription records are not automatically changed.",
                   },
                   {
                     q: "What payment methods do you accept?",

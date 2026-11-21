@@ -3,6 +3,10 @@ import { protectedProcedure } from "./_core/trpc";
 import {
   PLATFORM_SUBSCRIPTIONS_PAUSED,
   PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE,
+  PROVIDER_TRIALS_PAUSED,
+  PROVIDER_TRIAL_PAUSE_MESSAGE,
+  ALL_TRIALS_PAUSED,
+  ALL_TRIAL_PAUSE_MESSAGE,
   PROVIDER_PAYMENTS_PAUSED,
   PROVIDER_PAYMENT_PAUSE_MESSAGE,
 } from "../shared/providerPaymentPause";
@@ -25,6 +29,26 @@ export function assertPlatformSubscriptionBillingOpen(): void {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE,
+    });
+  }
+}
+
+/** Blocks creation of new local provider trials without changing existing records. */
+export function assertProviderTrialStartOpen(): void {
+  if (PROVIDER_TRIALS_PAUSED) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: PROVIDER_TRIAL_PAUSE_MESSAGE,
+    });
+  }
+}
+
+/** Blocks every new trial start across provider and customer subscriptions. */
+export function assertAllTrialStartOpen(): void {
+  if (ALL_TRIALS_PAUSED) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: ALL_TRIAL_PAUSE_MESSAGE,
     });
   }
 }
