@@ -11,6 +11,7 @@ import { providerHasFeature } from "@shared/entitlements";
 import { queueCrmInvoiceProjection } from "./crm/sourceHooks";
 import { assertPaymentActorCanInitiate } from "./paymentAuthorization";
 import { assertPaymentVelocityAllowed, throwIfPaymentVelocityBlocked } from "./paymentVelocity";
+import { providerPaymentProcedure } from "./providerPaymentPause";
 
 // Helper: check if provider has paid tier (Basic or Premium)
 async function requirePaidTier(providerId: number) {
@@ -332,7 +333,7 @@ export const invoiceRouter = router({
     }),
 
   // Customer: get a Stripe checkout link to pay an invoice
-  getPaymentLink: protectedProcedure
+  getPaymentLink: providerPaymentProcedure
     .input(z.object({ invoiceId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const invoice = await invoiceDb.getInvoiceById(input.invoiceId);

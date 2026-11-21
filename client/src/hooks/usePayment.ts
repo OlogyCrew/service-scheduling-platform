@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { PROVIDER_PAYMENTS_PAUSED, PROVIDER_PAYMENT_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 
 /**
  * Custom hook for payment processing
@@ -18,11 +19,16 @@ export function usePayment() {
   });
 
   const initiatePayment = (bookingId: number) => {
+    if (PROVIDER_PAYMENTS_PAUSED) {
+      toast.error(PROVIDER_PAYMENT_PAUSE_MESSAGE);
+      return;
+    }
     createCheckout.mutate({ bookingId });
   };
 
   return {
     initiatePayment,
     isProcessing: createCheckout.isPending,
+    isPaused: PROVIDER_PAYMENTS_PAUSED,
   };
 }

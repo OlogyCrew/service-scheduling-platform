@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { NavHeader } from "@/components/shared/NavHeader";
 import { formatPrice } from "@shared/formatPrice";
 import { PaymentMethods } from "@/components/PaymentMethods";
+import { PROVIDER_PAYMENTS_PAUSED, PROVIDER_PAYMENT_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 
 function ShareReferralLink() {
   const { data: myCode } = trpc.referral.getMyCode.useQuery();
@@ -111,7 +112,7 @@ export default function BookingConfirmation() {
   // Credit preview for this booking
   const { data: creditPreview } = trpc.stripe.previewCreditDiscount.useQuery(
     { bookingId: parseInt(id!) },
-    { enabled: !!id && !!user && useCredits && isOnlineBooking }
+    { enabled: !PROVIDER_PAYMENTS_PAUSED && !!id && !!user && useCredits && isOnlineBooking }
   );
 
   const createCheckout = trpc.stripe.createCheckoutSession.useMutation({
@@ -137,6 +138,10 @@ export default function BookingConfirmation() {
   });
 
   const handlePayment = () => {
+    if (PROVIDER_PAYMENTS_PAUSED) {
+      toast.error(PROVIDER_PAYMENT_PAUSE_MESSAGE);
+      return;
+    }
     if (!id || !isOnlineBooking || !user || booking?.customerId !== user.id
       || provider?.isOfficial || !provider?.canAcceptPlatformPayments || createCheckout.isPending) return;
     createCheckout.mutate({
@@ -225,7 +230,7 @@ export default function BookingConfirmation() {
 
   const depositAmount = getDepositAmount();
   const availableCredits = parseFloat(creditBalance?.balance || "0");
-  const creditDiscount = parseFloat(creditPreview?.applicableCredit || "0");
+  const creditDiscount = PROVIDER_PAYMENTS_PAUSED ? 0 : parseFloat(creditPreview?.applicableCredit || "0");
   const hasCredits = availableCredits > 0;
 
   // Offline settlement is independent of the booking lifecycle and booking.paidAt.
@@ -249,11 +254,13 @@ export default function BookingConfirmation() {
     ) : "Your booking has been submitted and is pending provider confirmation.";
   const heading = isOnlineBooking ? (
     (booking as any).paidAt ? "Booking Confirmed & Paid!"
+      : PROVIDER_PAYMENTS_PAUSED && booking.status === "confirmed" ? "Booking Confirmed — Online Payments Paused"
       : booking.status === "confirmed" ? "Booking Confirmed — Payment Required"
         : "Booking Request Submitted!"
   ) : lifecycleHeading;
   const description = isOnlineBooking ? (
     (booking as any).paidAt ? "Your booking is fully confirmed and paid."
+      : PROVIDER_PAYMENTS_PAUSED ? "Online payment collection is temporarily paused. Your booking and original amount are preserved; no payment has been collected by this pause."
       : booking.status === "confirmed" ? "The provider has confirmed your booking. Please complete payment to secure your spot."
         : "Your booking has been submitted and is pending provider confirmation."
   ) : lifecycleDescription;
@@ -478,7 +485,7 @@ export default function BookingConfirmation() {
             )}
 
             {/* Credit Application Toggle */}
-            {hasCredits && (
+            {hasCredits && !PROVIDER_PAYMENTS_PAUSED && (
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -552,12 +559,12 @@ export default function BookingConfirmation() {
 
             {!depositAmount && booking.status === "pending" && (
               <p className="text-sm text-muted-foreground">
-                Payment will be processed after provider confirms the booking.
+                {PROVIDER_PAYMENTS_PAUSED ? PROVIDER_PAYMENT_PAUSE_MESSAGE : "Payment will be processed after provider confirms the booking."}
               </p>
             )}
 
             <Separator className="my-3" />
-            <PaymentMethods size="sm" className="mt-2" />
+            {PROVIDER_PAYMENTS_PAUSED ? <p role="status" className="text-sm text-amber-800">{PROVIDER_PAYMENT_PAUSE_MESSAGE} Any unpaid balance remains unchanged.</p> : <PaymentMethods size="sm" className="mt-2" />}
           </CardContent>
         </Card>
         ))}
@@ -602,7 +609,9 @@ export default function BookingConfirmation() {
               <div>
                 <p className="font-semibold">Service Day</p>
                 <p className="text-sm text-muted-foreground">
-                  Show up at the scheduled time and enjoy your service!
+                  {PROVIDER_PAYMENTS_PAUSED && isOnlineBooking && !(booking as any).paidAt
+                    ? "Check your booking status and message the provider before attending. Online payments remain unavailable."
+                    : "Show up at the scheduled time and enjoy your service!"}
                 </p>
               </div>
             </div>
@@ -705,10 +714,10 @@ export default function BookingConfirmation() {
             {isOnlineBooking && user && booking.customerId === user.id && !(provider as any)?.isOfficial && (provider as any)?.canAcceptPlatformPayments && depositAmount && !(booking as any).depositPaidAt && (
               <Button
                 onClick={() => handlePayment()}
-                disabled={!isOnlineBooking || createCheckout.isPending}
+                disabled={PROVIDER_PAYMENTS_PAUSED || !isOnlineBooking || createCheckout.isPending}
                 className="flex-1"
               >
-                {createCheckout.isPending ? (
+                {PROVIDER_PAYMENTS_PAUSED ? "Online Payments Paused" : createCheckout.isPending ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>
                 ) : useCredits && creditPreview?.coversFullAmount ? (
                   <>Pay with Credits</>
@@ -720,10 +729,10 @@ export default function BookingConfirmation() {
             {isOnlineBooking && user && booking.customerId === user.id && !(provider as any)?.isOfficial && (provider as any)?.canAcceptPlatformPayments && !depositAmount && !(booking as any).paidAt && booking.status === "confirmed" && (
               <Button
                 onClick={() => handlePayment()}
-                disabled={!isOnlineBooking || createCheckout.isPending}
+                disabled={PROVIDER_PAYMENTS_PAUSED || !isOnlineBooking || createCheckout.isPending}
                 className="flex-1"
               >
-                {createCheckout.isPending ? (
+                {PROVIDER_PAYMENTS_PAUSED ? "Online Payments Paused" : createCheckout.isPending ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>
                 ) : useCredits && creditPreview?.coversFullAmount ? (
                   <>Pay with Credits</>

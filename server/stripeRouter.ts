@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import Stripe from "stripe";
 import { ENV } from "./_core/env";
@@ -7,6 +7,8 @@ import * as db from "./db";
 import { getReferralCreditBalance, spendReferralCredits } from "./db/referrals";
 import { assertPaymentActorCanInitiate, assertProviderCanCollectPayments } from "./paymentAuthorization";
 import { assertPaymentVelocityAllowed, throwIfPaymentVelocityBlocked } from "./paymentVelocity";
+import { providerPaymentProcedure } from "./providerPaymentPause";
+import { getProviderPaymentCollectionStatus } from "../shared/providerPaymentPause";
 
 const stripe = new Stripe(ENV.stripeSecretKey, {
   apiVersion: "2026-01-28.clover" as any,
@@ -15,10 +17,12 @@ const stripe = new Stripe(ENV.stripeSecretKey, {
 const PLATFORM_FEE_RATE = 0.01; // 1% platform fee (revenue comes from subscriptions)
 
 export const stripeRouter = router({
+  collectionStatus: publicProcedure.query(() => getProviderPaymentCollectionStatus()),
+
   /**
    * Preview how much credit can be applied to a booking before checkout.
    */
-  previewCreditDiscount: protectedProcedure
+  previewCreditDiscount: providerPaymentProcedure
     .input(z.object({
       bookingId: z.number(),
     }))
@@ -48,7 +52,7 @@ export const stripeRouter = router({
       };
     }),
 
-  createCheckoutSession: protectedProcedure
+  createCheckoutSession: providerPaymentProcedure
     .input(z.object({
       bookingId: z.number(),
       useCredits: z.boolean().optional().default(false),

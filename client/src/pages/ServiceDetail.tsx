@@ -27,6 +27,7 @@ import { formatPrice } from "@shared/formatPrice";
 import { PaymentMethods } from "@/components/PaymentMethods";
 import { AdaptiveQuoteRequestCard } from "@/components/booking/AdaptiveQuoteRequestCard";
 import { getAdaptiveBookingDecision } from "../../../shared/adaptiveBooking";
+import { PROVIDER_PAYMENTS_PAUSED, PROVIDER_PAYMENT_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 
 
 type BookingStep = "date" | "time" | "details" | "confirm";
@@ -322,6 +323,10 @@ export default function ServiceDetail() {
   }, [provider, bookingStep, service?.serviceType]);
 
   const [bookingError, setBookingError] = useState<string | null>(null);
+  const showPausedReservation = (bookingId: number) => {
+    toast.success("Booking request saved. Online payments are paused; no payment was collected.");
+    setLocation(`/booking/${bookingId}`);
+  };
 
   const createBooking = trpc.booking.create.useMutation({
     onSuccess: (data) => {
@@ -340,6 +345,10 @@ export default function ServiceDetail() {
       if ((provider as any)?.isOfficial) {
         toast.success("Demo booking confirmed! No payment needed — this is a free demo.");
         setLocation(`/booking/${data.id}`);
+        return;
+      }
+      if (PROVIDER_PAYMENTS_PAUSED) {
+        showPausedReservation(data.id);
         return;
       }
       const isPriced = service?.pricingModel !== "custom_quote" && service?.pricingModel !== "consultation";
@@ -372,6 +381,10 @@ export default function ServiceDetail() {
         setLocation(`/booking/${data.id}`);
         return;
       }
+      if (PROVIDER_PAYMENTS_PAUSED) {
+        showPausedReservation(data.id);
+        return;
+      }
       const isPriced = service?.pricingModel !== "custom_quote" && service?.pricingModel !== "consultation";
       const paymentRequested = isPriced && (service?.requireUpfrontPayment || paymentChoice === "pay_now");
       if (paymentRequested && canAcceptPlatformPayments) {
@@ -400,6 +413,10 @@ export default function ServiceDetail() {
       if ((provider as any)?.isOfficial) {
         toast.success("Demo booking confirmed! No payment needed — this is a free demo.");
         setLocation(`/booking/${data.id}`);
+        return;
+      }
+      if (PROVIDER_PAYMENTS_PAUSED) {
+        showPausedReservation(data.id);
         return;
       }
       const isPriced = service?.pricingModel !== "custom_quote" && service?.pricingModel !== "consultation";
@@ -444,6 +461,10 @@ export default function ServiceDetail() {
   });
   
   const handlePayment = (bookingId: number) => {
+    if (PROVIDER_PAYMENTS_PAUSED) {
+      showPausedReservation(bookingId);
+      return;
+    }
     createCheckout.mutate({ bookingId });
   };
 
@@ -2404,6 +2425,16 @@ export default function ServiceDetail() {
                               Processing demo booking...
                             </span>
                           ) : "Complete Demo Booking (Free)"}
+                        </Button>
+                      </div>
+                    ) : PROVIDER_PAYMENTS_PAUSED ? (
+                      <div className="space-y-3">
+                        <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                          <p className="font-semibold">{PROVIDER_PAYMENT_PAUSE_MESSAGE}</p>
+                          <p className="mt-1 text-xs">You may submit a booking request, but no online payment will be collected. The original amount is not waived. Check your booking status and message the provider before attending.</p>
+                        </div>
+                        <Button onClick={handleBooking} disabled={isBookingPending || isBookingSuccess} className="w-full" size="lg">
+                          {isBookingSuccess ? "Request Sent!" : isBookingPending ? "Submitting request..." : "Submit Booking Request"}
                         </Button>
                       </div>
                     ) : service.pricingModel !== "custom_quote" && service.pricingModel !== "consultation" && getNumericPrice() > 0 && !service.requireUpfrontPayment && canAcceptPlatformPayments ? (

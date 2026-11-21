@@ -9,6 +9,7 @@ import { RoleGuard } from "./components/RoleGuard";
 import { ProviderOnlyGuard } from "./components/ProviderOnlyGuard";
 import { Footer } from "./components/shared/Footer";
 import { PreviewEnvironmentBanner } from "./components/shared/PreviewEnvironmentBanner";
+import { ProviderPaymentPauseBanner } from "./components/shared/ProviderPaymentPauseBanner";
 import { HelpChatWidget } from "./components/HelpChatWidget";
 import { TermsUpdateBanner } from "./components/TermsUpdateBanner";
 import { useLocation } from "wouter";
@@ -298,6 +299,7 @@ function App() {
         <TooltipProvider>
           <Toaster position="bottom-left" />
           <OfflineBanner />
+          <ProviderPaymentPauseBanner />
           <AppContent />
         </TooltipProvider>
       </ThemeProvider>

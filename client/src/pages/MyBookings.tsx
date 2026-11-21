@@ -39,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { BookingsSkeleton } from "@/components/DashboardSkeleton";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationPrevious, PaginationNext, PaginationEllipsis } from "@/components/ui/pagination";
 import SectionErrorBoundary from "@/components/SectionErrorBoundary";
+import { PROVIDER_PAYMENTS_PAUSED, PROVIDER_PAYMENT_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 
 function BookingsPageFrame({
   providerMode,
@@ -1040,12 +1041,13 @@ function BookingCard({
                 variant="default" 
                 size="sm"
                 onClick={() => setLocation(`/booking/${booking.id}`)}
-                disabled={isOffline}
+                disabled={isOffline || PROVIDER_PAYMENTS_PAUSED}
+                title={PROVIDER_PAYMENTS_PAUSED ? PROVIDER_PAYMENT_PAUSE_MESSAGE : undefined}
               >
-                Pay Now
+                {PROVIDER_PAYMENTS_PAUSED ? "Online Payments Paused" : "Pay Now"}
               </Button>
             )}
-            <Button 
+            <Button
               variant="outline" 
               size="sm"
               onClick={() => setLocation(`/booking/${booking.id}/detail`)}

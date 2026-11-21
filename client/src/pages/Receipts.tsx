@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Link, useSearch } from "wouter";
 import { toast } from "sonner";
+import { PROVIDER_PAYMENTS_PAUSED, PROVIDER_PAYMENT_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -52,6 +53,7 @@ export default function Receipts() {
   const paidId = new URLSearchParams(searchParams).get("paid");
 
   const { data: receipts, refetch } = trpc.invoice.getMyReceipts.useQuery();
+  const returnedPaymentConfirmed = !!paidId && !!receipts?.some((receipt) => String(receipt.id) === paidId && receipt.status === "paid");
 
   const payMutation = trpc.invoice.getPaymentLink.useMutation({
     onSuccess: (data) => {
@@ -100,7 +102,7 @@ export default function Receipts() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold">Receipts & Invoices</h1>
-          <p className="text-muted-foreground text-sm">View your payment history and pay outstanding invoices</p>
+          <p className="text-muted-foreground text-sm">{PROVIDER_PAYMENTS_PAUSED ? "View your payment history and outstanding invoices. Online invoice payments are temporarily unavailable." : "View your payment history and pay outstanding invoices"}</p>
         </div>
       </div>
 
@@ -110,8 +112,8 @@ export default function Receipts() {
           <CardContent className="p-4 flex items-center gap-3">
             <CheckCircle className="h-5 w-5 text-green-600" />
             <div>
-              <p className="font-medium text-green-800">Payment successful!</p>
-              <p className="text-sm text-green-700">Your invoice has been paid. A receipt will appear below shortly.</p>
+              <p className="font-medium text-green-800">{returnedPaymentConfirmed ? "Payment confirmed" : "Payment status awaiting confirmation"}</p>
+              <p className="text-sm text-green-700">{returnedPaymentConfirmed ? "The recorded invoice status is paid. Your payment history is shown below." : "Returning from checkout does not confirm payment. Check the recorded invoice status below; do not retry payment while online collection is paused."}</p>
             </div>
           </CardContent>
         </Card>
@@ -221,11 +223,12 @@ export default function Receipts() {
                           <Button
                             size="sm"
                             variant="default"
-                            onClick={() => payMutation.mutate({ invoiceId: inv.id })}
-                            disabled={payMutation.isPending}
+                            onClick={() => { if (!PROVIDER_PAYMENTS_PAUSED) payMutation.mutate({ invoiceId: inv.id }); }}
+                            disabled={payMutation.isPending || PROVIDER_PAYMENTS_PAUSED}
+                            title={PROVIDER_PAYMENTS_PAUSED ? PROVIDER_PAYMENT_PAUSE_MESSAGE : undefined}
                           >
                             <CreditCard className="h-3 w-3 mr-1" />
-                            Pay Now
+                            {PROVIDER_PAYMENTS_PAUSED ? "Online Payments Paused" : "Pay Now"}
                           </Button>
                         )}
                         {inv.pdfUrl && (
