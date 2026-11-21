@@ -5,6 +5,7 @@ import { ENV } from "./_core/env";
 import * as db from "./db";
 import { TRPCError } from "@trpc/server";
 import { providerHasFeature } from "@shared/entitlements";
+import { assertPlatformSubscriptionBillingOpen } from "./providerPaymentPause";
 
 const stripe = new Stripe(ENV.stripeSecretKey!, {
   apiVersion: "2026-01-28.clover" as any,
@@ -17,6 +18,7 @@ export const stripeConnectRouter = router({
       origin: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
+      assertPlatformSubscriptionBillingOpen();
       const provider = await db.getProviderByUserId(ctx.user.id);
       if (!provider) throw new TRPCError({ code: "NOT_FOUND", message: "Provider profile not found" });
 
@@ -187,6 +189,7 @@ export const stripeConnectRouter = router({
 
   // Get a link to the Stripe Express Dashboard
   getDashboardLink: protectedProcedure.mutation(async ({ ctx }) => {
+    assertPlatformSubscriptionBillingOpen();
     const provider = await db.getProviderByUserId(ctx.user.id);
     if (!provider?.stripeAccountId) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "No Stripe account connected. Please complete Stripe onboarding first." });
@@ -214,6 +217,7 @@ export const stripeConnectRouter = router({
   getOnboardingLink: protectedProcedure
     .input(z.object({ origin: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      assertPlatformSubscriptionBillingOpen();
       const provider = await db.getProviderByUserId(ctx.user.id);
       if (!provider?.stripeAccountId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No Stripe account connected. Please start the onboarding process first." });

@@ -45,6 +45,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { MessageSquareQuote, HelpCircle, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { formatPrice } from "@shared/formatPrice";
 import { CATEGORY_ICONS } from "@/lib/categoryIcons";
+import { PLATFORM_SUBSCRIPTIONS_PAUSED, PLATFORM_SUBSCRIPTION_PAUSE_DETAIL, PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 
 // ============================================================================
 // CATEGORY ICON MAP — visual icons for each category
@@ -277,8 +278,8 @@ function WhyBecomeProvider({ onGetStarted }: { onGetStarted: () => void }) {
   const benefits = [
     {
       icon: DollarSign,
-      title: "Earn on Your Terms",
-      description: "Set your own prices, choose your services, and get paid securely through Stripe. No hidden fees — just a simple 1% platform fee.",
+      title: "Build Your Business",
+      description: "Set your own prices, choose your services, and create a professional profile. Online provider payments are temporarily paused while Stripe reviews the account.",
     },
     {
       icon: Calendar,
@@ -311,7 +312,7 @@ function WhyBecomeProvider({ onGetStarted }: { onGetStarted: () => void }) {
     { number: "1", title: "Create Your Profile", desc: "Add your photo, business name, and location in under 2 minutes." },
     { number: "2", title: "Choose Your Categories", desc: "Select from 48+ service categories that match your skills." },
     { number: "3", title: "Add Your Services", desc: "List your services with pricing, duration, and descriptions." },
-    { number: "4", title: "Start Getting Booked", desc: "Connect Stripe, go live, and start accepting bookings today." },
+    { number: "4", title: "Start Getting Booked", desc: "Complete your profile and services so customers can discover you. Online provider payments can be connected after Stripe review is complete." },
   ];
 
   return (
@@ -332,8 +333,7 @@ function WhyBecomeProvider({ onGetStarted }: { onGetStarted: () => void }) {
               <span className="text-primary block sm:inline"> Digital Home</span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground mt-4 max-w-2xl mx-auto leading-relaxed">
-              Get discovered. Get booked. Get paid. OlogyCrew gives you a professional profile, 
-              booking system, and payment infrastructure — no gatekeeping, no lead fees.
+              Get discovered and get booked. OlogyCrew gives you a professional profile and booking tools while online provider payments are temporarily paused during Stripe's account review.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
               <Button size="lg" className="text-base px-8" onClick={onGetStarted}>
@@ -498,7 +498,7 @@ function WhyBecomeProvider({ onGetStarted }: { onGetStarted: () => void }) {
                 How much does it cost to become a provider?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed">
-                Signing up is completely free. There are no monthly fees, no subscription charges, and no upfront costs. We only charge a simple 1% platform fee on each completed transaction, so you only pay when you earn.
+                Signing up on the Starter plan is free. You can build your profile, list eligible services, manage availability, and receive booking requests. Online provider payment collection and paid plan checkout are temporarily unavailable while Stripe reviews OlogyCrew's account.
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="payouts">
@@ -506,7 +506,7 @@ function WhyBecomeProvider({ onGetStarted }: { onGetStarted: () => void }) {
                 How and when do I get paid?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed">
-                Payments are processed securely through Stripe. Once a customer completes a booking, funds are deposited directly into your connected bank account. Standard Stripe payouts typically arrive within 2 business days.
+                Online provider payment collection and Stripe Connect setup are temporarily unavailable while Stripe reviews OlogyCrew's account. You can still complete your profile, list services, manage availability, and receive booking requests. Do not treat an unpaid booking or invoice as paid.
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="cancellation">
@@ -1845,10 +1845,17 @@ export default function ProviderOnboarding() {
                 Connect Your Payment Account
               </CardTitle>
               <CardDescription>
-                Set up Stripe to receive payments directly. Only a 1% platform fee applies.
+                Stripe/provider online payments are temporarily unavailable while Stripe reviews OlogyCrew's account.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {PLATFORM_SUBSCRIPTIONS_PAUSED && !existingProvider?.payoutEnabled && (
+                <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                  <p className="font-medium">{PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE}</p>
+                  <p className="mt-1 text-sm">{PLATFORM_SUBSCRIPTION_PAUSE_DETAIL}</p>
+                </div>
+              )}
+
               {existingProvider?.payoutEnabled ? (
                 <div className="text-center py-8">
                   <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
@@ -1860,33 +1867,33 @@ export default function ProviderOnboarding() {
                   <Shield className="h-12 w-12 text-amber-600 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold">Upgrade Required</h3>
                   <p className="text-muted-foreground mt-1 max-w-md mx-auto">
-                    Payment account setup requires a Pro or Business subscription. Go back to Step 4 to upgrade your plan, or skip this step and upgrade later from your dashboard.
+                    {PLATFORM_SUBSCRIPTION_PAUSE_DETAIL}
                   </p>
                 </div>
               ) : (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="p-4 rounded-lg border text-center">
-                      <p className="text-2xl font-bold text-green-600">1%</p>
-                      <p className="text-sm text-muted-foreground">Platform fee</p>
+                      <p className="text-2xl font-bold text-green-600">$0</p>
+                      <p className="text-sm text-muted-foreground">To start on Starter</p>
                     </div>
                     <div className="p-4 rounded-lg border text-center">
-                      <p className="text-2xl font-bold">Direct</p>
-                      <p className="text-sm text-muted-foreground">Payments to you</p>
+                      <p className="text-2xl font-bold">Paused</p>
+                      <p className="text-sm text-muted-foreground">Online provider payments</p>
                     </div>
                     <div className="p-4 rounded-lg border text-center">
-                      <p className="text-2xl font-bold">Secure</p>
-                      <p className="text-sm text-muted-foreground">Powered by Stripe</p>
+                      <p className="text-2xl font-bold">Later</p>
+                      <p className="text-sm text-muted-foreground">Stripe setup after review</p>
                     </div>
                   </div>
 
                   <div className="bg-muted/50 p-4 rounded-lg">
                     <h4 className="font-medium mb-2">How it works:</h4>
                     <ul className="space-y-1 text-sm text-muted-foreground">
-                      <li>1. Click below to set up your Stripe account</li>
-                      <li>2. Complete the Stripe verification process</li>
-                      <li>3. Customers book and pay — money goes directly to you</li>
-                      <li>4. OlogyCrew only takes a 1% platform fee</li>
+                      <li>1. Finish your profile, categories, services, and availability</li>
+                      <li>2. Keep receiving booking requests and managing your schedule</li>
+                      <li>3. Online provider payment collection remains paused during Stripe review</li>
+                      <li>4. We will announce when Stripe setup and paid collection are available again</li>
                     </ul>
                   </div>
                 </>
@@ -1910,10 +1917,11 @@ export default function ProviderOnboarding() {
                       </Button>
                       <Button
                         onClick={() => startOnboarding.mutate({ origin: window.location.origin })}
-                        disabled={startOnboarding.isPending}
+                        disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || startOnboarding.isPending}
+                        title={PLATFORM_SUBSCRIPTIONS_PAUSED ? PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE : undefined}
                       >
                         {startOnboarding.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                        Connect Stripe Account
+                        {PLATFORM_SUBSCRIPTIONS_PAUSED ? "Stripe setup unavailable" : "Connect Stripe Account"}
                       </Button>
                     </>
                   )}

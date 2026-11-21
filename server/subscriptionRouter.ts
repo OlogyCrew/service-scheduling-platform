@@ -13,6 +13,7 @@ import { getSubscriptionAnalytics as getEffectiveSubscriptionAnalytics } from ".
 import { createSubscriptionInAppNotice } from "./subscriptionNotifications";
 import { assertProviderPaymentActor } from "./paymentAuthorization";
 import { assertPaymentVelocityAllowed, throwIfPaymentVelocityBlocked } from "./paymentVelocity";
+import { assertPlatformSubscriptionBillingOpen } from "./providerPaymentPause";
 
 const stripe = new Stripe(ENV.stripeSecretKey, {
   apiVersion: "2026-01-28.clover" as any,
@@ -285,6 +286,7 @@ export const subscriptionRouter = router({
       returnTo: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      assertPlatformSubscriptionBillingOpen();
       const provider = await db.getProviderByUserId(ctx.user.id);
       if (!provider) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider to subscribe" });
@@ -472,6 +474,7 @@ export const subscriptionRouter = router({
 
   // Create portal session for managing subscription
   createPortalSession: protectedProcedure.mutation(async ({ ctx }) => {
+    assertPlatformSubscriptionBillingOpen();
     const provider = await db.getProviderByUserId(ctx.user.id);
     if (!provider) throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
 
@@ -518,6 +521,7 @@ export const subscriptionRouter = router({
       targetTier: z.enum(["free", "basic"]),
     }))
     .mutation(async ({ ctx, input }) => {
+      assertPlatformSubscriptionBillingOpen();
       const provider = await db.getProviderByUserId(ctx.user.id);
       if (!provider) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
@@ -726,6 +730,7 @@ export const subscriptionRouter = router({
       interval: z.enum(["month", "year"]),
     }))
     .mutation(async ({ ctx, input }) => {
+      assertPlatformSubscriptionBillingOpen();
       const provider = await db.getProviderByUserId(ctx.user.id);
       if (!provider) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
@@ -784,6 +789,7 @@ export const subscriptionRouter = router({
       resumeDate: z.string().optional(), // ISO date string when to auto-resume
     }))
     .mutation(async ({ ctx, input }) => {
+      assertPlatformSubscriptionBillingOpen();
       const provider = await db.getProviderByUserId(ctx.user.id);
       if (!provider) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
@@ -862,6 +868,7 @@ export const subscriptionRouter = router({
 
   // Resume a paused subscription
   resume: protectedProcedure.mutation(async ({ ctx }) => {
+    assertPlatformSubscriptionBillingOpen();
     const provider = await db.getProviderByUserId(ctx.user.id);
     if (!provider) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });

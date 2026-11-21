@@ -37,6 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PROVIDER_PLANS } from "@shared/entitlements";
+import { PLATFORM_SUBSCRIPTIONS_PAUSED, PLATFORM_SUBSCRIPTION_PAUSE_DETAIL, PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 import "./SubscriptionManagement.css";
 
 const PLANS = [
@@ -54,7 +55,7 @@ const PLANS = [
       { text: "Basic public profile", included: true },
       { text: "Standard search placement", included: true },
       { text: "Stripe payment collection", included: false },
-      { text: "Invoicing & branded receipts", included: false },
+      { text: "Invoicing & branded receipts (after review)", included: false },
       { text: "Tip collection (Zelle, Cash App, Venmo)", included: true },
       { text: "1% transaction fee on OlogyCrew payments", included: false },
       { text: "Multiple categories", included: false },
@@ -79,8 +80,8 @@ const PLANS = [
       { text: "Custom profile URL slug", included: true },
       { text: "Priority search placement", included: true },
       { text: "Business analytics", included: true },
-      { text: "Stripe payment collection", included: true },
-      { text: "Invoicing & receipts", included: true },
+      { text: "Stripe payment collection (after review)", included: true },
+      { text: "Invoicing & receipts (after review)", included: true },
       { text: "Tip collection (Zelle, Cash App, Venmo)", included: true },
       { text: "1% transaction fee", included: true },
       { text: "Email support", included: true },
@@ -105,8 +106,8 @@ const PLANS = [
       { text: "Featured listing badge", included: true },
       { text: "Top search placement", included: true },
       { text: "Full analytics suite", included: true },
-      { text: "Stripe payment collection", included: true },
-      { text: "Invoicing & receipts", included: true },
+      { text: "Stripe payment collection (after review)", included: true },
+      { text: "Invoicing & receipts (after review)", included: true },
       { text: "Tip collection (Zelle, Cash App, Venmo)", included: true },
       { text: "1% transaction fee", included: true },
       { text: "Priority support", included: true },
@@ -194,6 +195,7 @@ export default function SubscriptionManagement() {
   });
 
   const currentTier = currentSub?.currentTier || "free";
+  const paidBillingUnavailable = PLATFORM_SUBSCRIPTIONS_PAUSED;
 
   const { data: trialStatus } = trpc.subscription.checkTrialStatus.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -214,6 +216,10 @@ export default function SubscriptionManagement() {
 
   const handleSubscribe = (tier: string) => {
     if (tier === "free") return;
+    if (paidBillingUnavailable) {
+      toast.error(PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE);
+      return;
+    }
     setSubscribing(tier);
     subscribe.mutate({ 
       tier: tier as "basic" | "premium",
@@ -264,9 +270,17 @@ export default function SubscriptionManagement() {
             <h1 className="text-2xl sm:text-3xl font-bold">My Provider Plan Subscription</h1>
           </div>
           <p className="text-muted-foreground text-lg">
-            Grow your business with more categories, services, and visibility. Pro and Business include Stripe payment collection and invoicing with a 1% OlogyCrew transaction fee.
+            Grow your business with more categories, services, and visibility. Starter setup and the no-card local trial remain available; paid checkout and Stripe-backed payment features are temporarily paused.
           </p>
         </div>
+
+        {paidBillingUnavailable && (
+          <div role="status" className="mb-8 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+            <p className="font-medium">{PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE}</p>
+            <p className="mt-1 text-sm">{PLATFORM_SUBSCRIPTION_PAUSE_DETAIL}</p>
+            <p className="mt-2 text-sm">Existing paid subscription records are shown for reference and are not automatically cancelled or changed.</p>
+          </div>
+        )}
 
         {/* Annual/Monthly Toggle */}
         <div className="flex items-center justify-center gap-3 mb-8 ology-provider-plan-billing-toggle" role="group" aria-label="Provider billing interval">
@@ -316,8 +330,8 @@ export default function SubscriptionManagement() {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {trialStatus.showUrgentNudge 
-                      ? "Your trial is ending soon! Subscribe to keep your Pro features."
-                      : "Enjoying your trial? Subscribe anytime to keep access after it ends."}
+                      ? "Your trial is ending soon. Paid checkout is temporarily unavailable while Stripe reviews OlogyCrew's account."
+                      : "Enjoying your trial? Your trial remains available locally; paid checkout will return after Stripe review."}
                   </p>
                 </div>
               </div>
@@ -332,7 +346,7 @@ export default function SubscriptionManagement() {
               <div>
                 <p className="font-medium text-sm">Your Pro trial has ended</p>
                 <p className="text-xs text-muted-foreground">
-                  You're on the Starter plan. Subscribe to Pro to restore priority search, analytics, and more.
+                  You're on the Starter plan. Paid Pro/Business checkout is temporarily unavailable while Stripe reviews OlogyCrew's account.
                 </p>
               </div>
             </div>
@@ -402,7 +416,7 @@ export default function SubscriptionManagement() {
                     variant="default" 
                     size="sm"
                     onClick={() => resumeSubscription.mutate()}
-                    disabled={resumeSubscription.isPending}
+                    disabled={paidBillingUnavailable || resumeSubscription.isPending}
                   >
                     {resumeSubscription.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -421,7 +435,7 @@ export default function SubscriptionManagement() {
                           interval: currentSub.currentInterval,
                           withTrial: false,
                         })}
-                        disabled={subscribe.isPending}
+                        disabled={paidBillingUnavailable || subscribe.isPending}
                       >
                         {subscribe.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Play className="h-4 w-4 mr-1" />}
                         Keep Current Plan
@@ -431,6 +445,7 @@ export default function SubscriptionManagement() {
                         variant="outline" 
                         size="sm"
                         onClick={() => setShowPauseDialog(true)}
+                        disabled={paidBillingUnavailable}
                       >
                         <Pause className="h-4 w-4 mr-1" />
                         Pause Plan
@@ -440,7 +455,7 @@ export default function SubscriptionManagement() {
                       variant="outline" 
                       size="sm"
                       onClick={() => manageSubscription.mutate()}
-                      disabled={manageSubscription.isPending}
+                      disabled={paidBillingUnavailable || manageSubscription.isPending}
                     >
                       {manageSubscription.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -599,7 +614,7 @@ export default function SubscriptionManagement() {
                           setDowngradeTarget("free");
                           setShowDowngradeDialog(true);
                         }}
-                        disabled={downgrade.isPending}
+                        disabled={paidBillingUnavailable || downgrade.isPending}
                       >
                         {downgrade.isPending && downgradeTarget === "free" ? (
                           <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
@@ -624,7 +639,7 @@ export default function SubscriptionManagement() {
                           handleSubscribe(plan.tier);
                         }
                       }}
-                      disabled={subscribing === plan.tier || subscribe.isPending || startTrial.isPending || (downgrade.isPending && downgradeTarget === plan.tier)}
+                      disabled={(!(!trialStatus?.hasUsedTrial && currentTier === "free") && paidBillingUnavailable) || subscribing === plan.tier || subscribe.isPending || startTrial.isPending || (downgrade.isPending && downgradeTarget === plan.tier)}
                     >
                       {subscribing === plan.tier || startTrial.isPending ? (
                         <>

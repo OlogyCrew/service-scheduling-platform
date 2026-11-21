@@ -110,7 +110,7 @@ const guideSections: GuideSection[] = [
       {
         title: "Understanding the Platform",
         content:
-          "OlogyCrew connects customers with trusted service professionals across dozens of categories. Providers set their own services, pricing, and availability. Customers can browse, book, message providers, request quotes, and leave reviews. Payments are processed securely through Stripe, and both parties receive notifications at every step.",
+          "OlogyCrew connects customers with service professionals across dozens of categories. Providers set their own services, pricing, and availability. Customers can browse, send booking requests, message providers, request quotes, and leave reviews. Online provider payment collection is temporarily paused while Stripe reviews OlogyCrew's account; an unpaid booking or invoice is not treated as paid.",
       },
     ],
   },
@@ -248,7 +248,7 @@ const guideSections: GuideSection[] = [
       {
         title: "Provider Onboarding",
         content:
-          "There are two ways to become a provider: (1) Choose \"Provider\" when you first sign up and see the role selection screen, or (2) Click \"Become a Provider\" from your profile page if you initially signed up as a customer. Either way, you'll enter the onboarding wizard — a simple 5-step process:\n\n1. Profile — Set up your business profile with a description, location, and contact info\n2. Skills — Choose your service categories from the current directory\n3. Services — Add your services with pricing and duration\n4. Your Plan — Choose your subscription tier (Starter, Pro, or Business) or start a free 14-day Pro trial\n5. Get Paid — Connect your Stripe account to receive payments\n\nYour dashboard shows a checklist of what's complete.",
+          "There are two ways to become a provider: choose Provider at sign-up, or select Become a Provider from your profile. The onboarding wizard covers your profile, categories, services, availability, and plan. Starter is available now, and the no-card local trial can still be created. Paid Pro/Business checkout, Stripe Connect setup, and online provider payment collection are temporarily unavailable while Stripe reviews OlogyCrew's account. You can finish your profile and return to payment setup after Stripe restores service.",
         link: "/provider/onboarding",
         linkText: "Start Onboarding",
       },
@@ -350,14 +350,14 @@ const guideSections: GuideSection[] = [
       {
         title: "14-Day Pro Trial",
         content:
-             "New providers can start a free 14-day Pro trial — no credit card required. During the trial, you get access to all Pro features: up to 5 service categories, up to 10 services, 3 photos per service, custom profile URL slug, priority search placement, and analytics dashboard. Start your trial during onboarding (Step 4: Your Plan) or from the Subscription Management page.\n\nYou'll receive email notifications at key milestones: 7 days remaining, 3 days remaining, 1 day remaining, and when the trial expires. If you don't upgrade before the trial ends, your account automatically reverts to the free Starter tier (1 category, 3 services). You can upgrade to Pro ($12/mo) or Business ($20/mo) at any time — save up to 20% with annual billing.",
+             "New providers can start a free 14-day local Pro trial without a credit card. The trial records access locally, but Stripe-backed provider payment collection is not available during the current account review. If the trial expires without a paid subscription, the account returns to Starter. Paid Pro/Business checkout and billing changes will be restored only after Stripe approves service.",
         link: "/provider/subscription",
         linkText: "Manage Subscription",
       },
       {
         title: "Service & Photo Limits",
         content:
-          "Each subscription tier has different limits for categories, services, and photos:\n\n• Starter (Free) — 1 category, up to 3 services, 1 photo per service\n• Pro ($12/mo) — Up to 5 categories, up to 10 services, 3 photos per service\n• Business ($20/mo) — Unlimited categories, unlimited services, 5 photos per service\n\nWhen you reach your tier's limit, you'll see an upgrade prompt with a comparison of what each tier offers. You can upgrade at any time from the Subscription Management page. If you're on a trial and it expires, your services remain but you won't be able to add new ones beyond the Starter limit.",
+          "Each provider tier has different limits for categories, services, and photos: Starter is free; Pro and Business are paid tiers with additional limits and features. The current account-review pause means new paid checkout, billing changes, and Stripe payment features are unavailable. Existing paid subscription records remain visible and are not automatically cancelled or changed. If a trial expires, services remain subject to Starter limits.",
         link: "/provider/subscription",
         linkText: "Upgrade Your Plan",
       },
@@ -372,7 +372,7 @@ const guideSections: GuideSection[] = [
       {
         title: "How Payments Work",
         content:
-          "All payments on OlogyCrew are processed securely through Stripe. When you book a service, you'll be redirected to a secure Stripe checkout page to complete payment. Your payment information is never stored on our servers — Stripe handles all sensitive data with bank-level encryption.",
+          "Online provider payment collection and Stripe Connect are temporarily unavailable while Stripe reviews OlogyCrew's account. Do not assume an unpaid booking or invoice has been paid. Starter setup and local no-card trial creation remain available. Existing payment history remains viewable, and any future payment availability will be announced after Stripe review.",
       },
       {
         title: "Pay at Location",
@@ -387,7 +387,7 @@ const guideSections: GuideSection[] = [
       {
         title: "Provider Subscription Plans",
         content:
-          "Providers can choose from three subscription tiers:\n\n• Starter (Free) — 1 service category, up to 3 services, 1 photo per service, basic profile, standard search placement\n\n• Pro ($12/mo or $10.08/mo billed annually) — Up to 5 categories, up to 10 services, 3 photos per service, custom URL slug, priority search placement, analytics dashboard\n\n• Business ($20/mo or $16.00/mo billed annually) — Unlimited categories, unlimited services, 5 photos per service, featured listing badge, top search placement, full analytics, custom branding, priority support\n\nSave up to 20% by choosing annual billing (16% off Pro, 20% off Business)! Use the Monthly/Annual toggle on the pricing page to compare. New providers can start a free 14-day Pro trial — no credit card required — to experience all Pro features before committing.",
+          "Providers can choose from three subscription tiers. During the current Stripe review, Starter and local no-card trial flows remain available, while paid checkout, billing changes, and Stripe-backed payment features are paused. Existing paid subscription records remain read-only until service is restored.\n\n• Starter (Free) — 1 service category, up to 3 services, 1 photo per service, basic profile, standard search placement\n\n• Pro ($12/mo or $10.08/mo billed annually) — Up to 5 categories, up to 10 services, 3 photos per service, custom URL slug, priority search placement, analytics dashboard\n\n• Business ($20/mo or $16.00/mo billed annually) — Unlimited categories, unlimited services, 5 photos per service, featured listing badge, top search placement, full analytics, custom branding, priority support\n\nSave up to 20% by choosing annual billing (16% off Pro, 20% off Business)! Use the Monthly/Annual toggle on the pricing page to compare. New providers can start a free 14-day Pro trial — no credit card required — to experience all Pro features before committing.",
         link: "/provider/subscription",
         linkText: "Manage Subscription",
       },
@@ -468,7 +468,7 @@ const faqItems: FAQItem[] = [
   {
     question: "How do I book a service?",
     answer:
-      "Browse or search for the service you need, select a provider, choose your preferred date and time from their available slots, add any special instructions, and confirm your booking. You'll be guided through secure payment via Stripe. Note: grayed-out time slots are already booked or unavailable — only highlighted slots can be selected.",
+      "Browse or search for a service, select a provider, choose an available date and time, add instructions, and submit the booking request. Online provider payment collection is currently paused, so an unpaid booking or invoice remains unpaid. Note: grayed-out time slots are unavailable.",
     category: "Bookings",
   },
   {
@@ -504,7 +504,7 @@ const faqItems: FAQItem[] = [
   {
     question: "How are payments processed?",
     answer:
-      "All payments are processed securely through Stripe. Your card information is never stored on our servers. OlogyCrew charges a 1% platform fee on each transaction, which is included in the total shown at checkout.",
+      "Online provider payments are temporarily unavailable while Stripe reviews OlogyCrew's account. Existing payment history remains available, but unpaid bookings and invoices are not marked paid. Do not submit card details expecting a provider payment to be collected until OlogyCrew announces that Stripe service has been restored.",
     category: "Payments",
   },
   {
