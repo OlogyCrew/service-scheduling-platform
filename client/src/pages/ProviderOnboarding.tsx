@@ -45,7 +45,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { MessageSquareQuote, HelpCircle, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { formatPrice } from "@shared/formatPrice";
 import { CATEGORY_ICONS } from "@/lib/categoryIcons";
-import { PLATFORM_SUBSCRIPTIONS_PAUSED, PLATFORM_SUBSCRIPTION_PAUSE_DETAIL, PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE, PROVIDER_TRIALS_PAUSED, PROVIDER_TRIAL_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
+import { ALL_TRIALS_PAUSED, PLATFORM_SUBSCRIPTIONS_PAUSED, PLATFORM_SUBSCRIPTION_PAUSE_DETAIL, PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE, PROVIDER_PAYMENTS_PAUSED, PROVIDER_PAYMENT_PAUSE_MESSAGE, PROVIDER_TRIALS_PAUSED, PROVIDER_TRIAL_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 
 // ============================================================================
 // CATEGORY ICON MAP — visual icons for each category
@@ -56,7 +56,7 @@ const ALL_STEPS = [
   { id: 2, title: "Your Profile", icon: User, description: "Photo, name & location" },
   { id: 3, title: "Your Categories", icon: Grid3X3, description: "Choose your categories" },
   { id: 4, title: "Your Services", icon: Wrench, description: "Add services & pricing" },
-  { id: 5, title: "Get Paid", icon: CreditCard, description: "Connect Stripe" },
+  { id: 5, title: "Payments", icon: CreditCard, description: PLATFORM_SUBSCRIPTIONS_PAUSED || PROVIDER_PAYMENTS_PAUSED ? "Unavailable during review" : "Connect Stripe" },
 ];
 
 // ============================================================================
@@ -304,7 +304,7 @@ function WhyBecomeProvider({ onGetStarted }: { onGetStarted: () => void }) {
     {
       icon: Shield,
       title: "Built-In Trust & Safety",
-      description: "Verified provider badges, customer reviews, secure payments, and automated refund policies protect you and your customers.",
+      description: PROVIDER_PAYMENTS_PAUSED ? "Provider profile information and customer reviews help customers make informed decisions. Online payments and Stripe-backed refunds are unavailable during review." : "Verified provider badges, customer reviews, secure payments, and automated refund policies protect you and your customers.",
     },
   ];
 
@@ -312,7 +312,7 @@ function WhyBecomeProvider({ onGetStarted }: { onGetStarted: () => void }) {
     { number: "1", title: "Create Your Profile", desc: "Add your photo, business name, and location in under 2 minutes." },
     { number: "2", title: "Choose Your Categories", desc: "Select from 48+ service categories that match your skills." },
     { number: "3", title: "Add Your Services", desc: "List your services with pricing, duration, and descriptions." },
-    { number: "4", title: "Start Getting Booked", desc: "Complete your profile and services so customers can discover you. Online provider payments can be connected after Stripe review is complete." },
+    { number: "4", title: "Start Getting Booked", desc: "Complete your profile and services so customers can discover you. Online payment collection and Stripe setup remain unavailable during review; they do not resume automatically." },
   ];
 
   return (
@@ -418,18 +418,6 @@ function WhyBecomeProvider({ onGetStarted }: { onGetStarted: () => void }) {
                 quote: "I went from 5 clients a week to over 20 in my first month. The booking system handles everything so I can focus on cutting hair.",
                 rating: 5,
               },
-              {
-                name: "Jasmine R.",
-                role: "Massage Therapist",
-                quote: "The scheduling tools are a game-changer. Clients book directly, I get reminders, and payments land in my account automatically.",
-                rating: 5,
-              },
-              {
-                name: "David K.",
-                role: "Handyman Services",
-                quote: "I love that I can set my own prices and availability. The 1% fee is nothing compared to what other platforms charge. Highly recommend.",
-                rating: 5,
-              },
             ].map((testimonial) => (
               <Card key={testimonial.name} className="border-0 shadow-sm">
                 <CardContent className="pt-6">
@@ -471,7 +459,7 @@ function WhyBecomeProvider({ onGetStarted }: { onGetStarted: () => void }) {
             </div>
             <div>
               <div className="text-3xl sm:text-4xl font-bold">1%</div>
-              <div className="text-sm opacity-80 mt-1">Platform Fee</div>
+              <div className="text-sm opacity-80 mt-1">{PROVIDER_PAYMENTS_PAUSED ? "Reference fee — online payments paused" : "Platform Fee"}</div>
             </div>
             <div>
               <div className="text-3xl sm:text-4xl font-bold">
@@ -514,7 +502,7 @@ function WhyBecomeProvider({ onGetStarted }: { onGetStarted: () => void }) {
                 What happens if a customer cancels?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed">
-                You set your own cancellation policy during onboarding. Options include flexible (full refund up to 24 hours before), moderate (50% refund up to 48 hours before), or strict (no refund within 7 days). Cancellations and refunds are handled automatically based on your chosen policy.
+                You set your own cancellation policy during onboarding. Options include flexible (full refund up to 24 hours before), moderate (50% refund up to 48 hours before), or strict (no refund within 7 days). {PROVIDER_PAYMENTS_PAUSED ? "Online payment and Stripe-backed refund processing are unavailable during review. An unpaid booking does not create a card charge or refund. Contact support about an existing payment." : "Cancellations and refunds are handled automatically based on your chosen policy."}
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="categories">
@@ -546,7 +534,7 @@ function WhyBecomeProvider({ onGetStarted }: { onGetStarted: () => void }) {
                 How do I get verified?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed">
-                Complete your profile, add services, connect Stripe for payments, and maintain a good review rating. Verified providers get a badge on their profile, higher search visibility, and increased trust from potential customers.
+                Complete your profile and add services. Provider standing reflects profile and platform activity; evidence-review badges are separate and require current, approved evidence. Stripe setup is unavailable during review and is not required to continue free onboarding. A stored payment connection does not establish current payment availability or credential verification.
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -610,7 +598,7 @@ function WhyBecomeProvider({ onGetStarted }: { onGetStarted: () => void }) {
           <h2 className="text-2xl sm:text-3xl font-bold">Ready to Grow Your Business?</h2>
           <p className="text-muted-foreground mt-3 max-w-xl mx-auto">
             Join OlogyCrew today and start reaching new customers. 
-            No contracts, no monthly fees — just a simple 1% per transaction.
+            {PLATFORM_SUBSCRIPTIONS_PAUSED || PROVIDER_PAYMENTS_PAUSED ? "Starter profile setup remains free. Paid subscriptions and online payment collection are unavailable during review." : "Starter has no monthly fee; paid plans and platform transaction fees are listed on the pricing page."}
           </p>
           <Button size="lg" className="mt-6 text-base px-8" onClick={onGetStarted}>
             Create Your Provider Profile
@@ -753,7 +741,7 @@ export default function ProviderOnboarding() {
     onSuccess: () => {
       setSelectedTier("free");
       utils.subscription.mySubscription.invalidate();
-      toast.success("Starter plan selected! You can upgrade anytime.");
+      toast.success(PLATFORM_SUBSCRIPTIONS_PAUSED ? "Starter plan selected. Paid upgrades remain unavailable during review." : "Starter plan selected! You can upgrade anytime.");
       setCurrentStep(2);
     },
     onError: (err) => toast.error(err.message),
@@ -803,7 +791,7 @@ export default function ProviderOnboarding() {
   };
 
   // Step 4: Tier selection
-  const { data: currentSubscription } = trpc.subscription.mySubscription.useQuery(undefined, {
+  const { data: currentSubscription, isLoading: subscriptionLoading } = trpc.subscription.mySubscription.useQuery(undefined, {
     enabled: !!existingProvider,
   });
   const [selectedTier, setSelectedTier] = useState<"free" | "basic" | "premium" | null>(null);
@@ -811,6 +799,11 @@ export default function ProviderOnboarding() {
 
   // Pre-select plan from pricing page selection (localStorage first, then DB fallback)
   useEffect(() => {
+    if (PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED) {
+      // Pending paid choices are reference records only; do not select or resume them.
+      setSelectedTier("free");
+      return;
+    }
     const stored = localStorage.getItem("ologycrew_selected_plan");
     if (stored && !selectedTier) {
       try {
@@ -827,7 +820,7 @@ export default function ProviderOnboarding() {
       const tier = (user as any).pendingPlanTier;
       if (["free", "basic", "premium"].includes(tier)) {
         setSelectedTier(tier as "free" | "basic" | "premium");
-        // Also store in localStorage for the auto-activation logic
+        // Retain the pending choice locally for reference only
         localStorage.setItem("ologycrew_selected_plan", JSON.stringify({
           tier,
           audience: (user as any).pendingPlanAudience || "provider",
@@ -883,7 +876,7 @@ export default function ProviderOnboarding() {
     2: !!existingProvider,
     3: (myCategories?.length ?? 0) > 0,
     4: (myServices?.length ?? 0) > 0,
-    5: existingProvider?.payoutEnabled === true,
+    5: !PLATFORM_SUBSCRIPTIONS_PAUSED && !PROVIDER_PAYMENTS_PAUSED && existingProvider?.payoutEnabled === true,
   }), [existingProvider, myCategories, myServices, tierSelected, hasActivePlan]);
 
   // Initialize selected categories from existing data
@@ -959,26 +952,9 @@ export default function ProviderOnboarding() {
       }
     }
 
-    // Auto-activate plan from localStorage after profile is created
-    const storedPlan = localStorage.getItem("ologycrew_selected_plan");
-    if (storedPlan && !currentSubscription?.subscription) {
-      try {
-        const plan = JSON.parse(storedPlan);
-        if (plan.audience === "provider") {
-          if (plan.tier === "free") {
-            await selectFreeTier.mutateAsync();
-          } else if (plan.tier === "basic" || plan.tier === "premium") {
-            await startTrial.mutateAsync({ tier: plan.tier });
-          }
-          localStorage.removeItem("ologycrew_selected_plan");
-          // Clear the pending plan from the user's DB record
-          try { await utils.client.auth.clearPendingPlan.mutate(); } catch {}
-        }
-      } catch (err) {
-        // Plan activation is best-effort during profile creation
-        console.error("[Onboarding] Auto-plan activation failed:", err);
-      }
-    }
+    // Saved and pending plan choices remain reference records only.
+    // Profile creation never activates a trial, rewrites an existing subscription,
+    // or clears pending-plan records. Free onboarding continues without paid setup.
 
     setCurrentStep(3);
   };
@@ -1487,7 +1463,7 @@ export default function ProviderOnboarding() {
                 Choose Your Plan
               </CardTitle>
               <CardDescription>
-                Pick the plan that fits your business. You can always upgrade or downgrade later.
+                {PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? "Continue with Starter setup or keep your existing plan unchanged. Paid prices and benefits are shown for reference only; paid selection, trials, and billing changes are unavailable during review." : "Pick the plan that fits your business. You can always upgrade or downgrade later."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1575,12 +1551,13 @@ export default function ProviderOnboarding() {
 
                 {/* Basic Tier */}
                 <div
-                  className={`relative p-5 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md ${
+                  aria-disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED}
+                  className={`relative p-5 rounded-xl border-2 transition-all ${PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? "cursor-not-allowed" : "cursor-pointer hover:shadow-md"} ${
                     selectedTier === "basic" || currentSubscription?.currentTier === "basic"
                       ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                       : "border-transparent bg-muted/50 hover:border-muted-foreground/20"
                   }`}
-                  onClick={() => setSelectedTier("basic")}
+                  onClick={() => { if (!PLATFORM_SUBSCRIPTIONS_PAUSED && !ALL_TRIALS_PAUSED) setSelectedTier("basic"); }}
                 >
                   {currentSubscription?.currentTier === "basic" ? (
                     <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
@@ -1639,8 +1616,8 @@ export default function ProviderOnboarding() {
                         Current Plan
                       </Button>
                     ) : (
-                      <Button variant="outline" size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); setSelectedTier("basic"); if (!existingProvider) setCurrentStep(2); }} disabled={PROVIDER_TRIALS_PAUSED}>
-                        {PROVIDER_TRIALS_PAUSED ? "Unavailable during review" : !hasUsedTrial ? "Start Free Trial" : "Select Pro"}
+                      <Button variant="outline" size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); if (PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED) return; setSelectedTier("basic"); if (!existingProvider) setCurrentStep(2); }} disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED}>
+                        {PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? "Unavailable during review" : !hasUsedTrial ? "Start Free Trial" : "Select Pro"}
                       </Button>
                     )}
                   </div>
@@ -1648,12 +1625,13 @@ export default function ProviderOnboarding() {
 
                 {/* Premium Tier */}
                 <div
-                  className={`relative p-5 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md ${
+                  aria-disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED}
+                  className={`relative p-5 rounded-xl border-2 transition-all ${PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? "cursor-not-allowed" : "cursor-pointer hover:shadow-md"} ${
                     selectedTier === "premium" || currentSubscription?.currentTier === "premium"
                       ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                       : "border-transparent bg-muted/50 hover:border-muted-foreground/20"
                   }`}
-                  onClick={() => setSelectedTier("premium")}
+                  onClick={() => { if (!PLATFORM_SUBSCRIPTIONS_PAUSED && !ALL_TRIALS_PAUSED) setSelectedTier("premium"); }}
                 >
                   {currentSubscription?.currentTier === "premium" ? (
                     <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
@@ -1712,8 +1690,8 @@ export default function ProviderOnboarding() {
                         Current Plan
                       </Button>
                     ) : (
-                      <Button variant="outline" size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); setSelectedTier("premium"); if (!existingProvider) setCurrentStep(2); }} disabled={PROVIDER_TRIALS_PAUSED}>
-                        {PROVIDER_TRIALS_PAUSED ? "Unavailable during review" : !hasUsedTrial ? "Start Free Trial" : "Select Business"}
+                      <Button variant="outline" size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); if (PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED) return; setSelectedTier("premium"); if (!existingProvider) setCurrentStep(2); }} disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED}>
+                        {PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? "Unavailable during review" : !hasUsedTrial ? "Start Free Trial" : "Select Business"}
                       </Button>
                     )}
                   </div>
@@ -1721,8 +1699,8 @@ export default function ProviderOnboarding() {
               </div>
 
               {/* New-trial pause notice */}
-              {PROVIDER_TRIALS_PAUSED && !hasUsedTrial && !selectedTier && (!currentSubscription?.subscription || currentSubscription?.currentTier === "free") && (
-                <div className="p-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-primary/10 border border-blue-500/20">
+              {(PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED) && (
+                <div role="status" className="p-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-primary/10 border border-blue-500/20">
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
                       <Zap className="h-4 w-4 text-blue-500" />
@@ -1730,7 +1708,7 @@ export default function ProviderOnboarding() {
                     <div className="flex-1">
                       <h4 className="font-semibold text-sm">New provider trials are paused</h4>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {PROVIDER_TRIAL_PAUSE_MESSAGE} Starter setup remains available, and existing subscription records are not changed.
+                        {PROVIDER_TRIAL_PAUSE_MESSAGE} Starter setup remains available, and existing subscription records are not changed. Trial dates are not extended. Stripe restoration alone does not resume service; a separately approved, tested release is also required.
                       </p>
                     </div>
                   </div>
@@ -1739,16 +1717,33 @@ export default function ProviderOnboarding() {
 
               {/* All plans include */}
               <div className="text-center text-xs text-muted-foreground">
-                All plans include: Booking management &middot; Customer messaging &middot; A public provider page. Pro and Business add Stripe payment collection and invoicing.
+                All plans include: Booking management &middot; Customer messaging &middot; A public provider page. {PROVIDER_PAYMENTS_PAUSED ? "Stripe payment collection and invoicing are unavailable during review on every plan." : "Pro and Business add Stripe payment collection and invoicing."}
               </div>
               <div className="flex justify-end pt-4">
                 <div className="flex gap-2">
                   {/* If no tier change selected (current plan stays), just continue */}
-                  {(!selectedTier || selectedTier === currentSubscription?.currentTier) ? (
+                  {PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? (
+                    <Button
+                      onClick={() => {
+                        if (existingProvider && subscriptionLoading) return;
+                        // Only create Starter when the readable record confirms free/no subscription.
+                        // Missing/error data or any existing subscription must not trigger a plan mutation.
+                        if (existingProvider && currentSubscription?.currentTier === "free" && !currentSubscription?.subscription) {
+                          selectFreeTier.mutate();
+                        } else {
+                          setCurrentStep(2);
+                        }
+                      }}
+                      disabled={selectFreeTier.isPending || (!!existingProvider && subscriptionLoading)}
+                    >
+                      Continue with {currentSubscription?.subscription ? "Existing Plan" : "Starter Setup"}
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  ) : (!selectedTier || selectedTier === currentSubscription?.currentTier) ? (
                     <Button
                       onClick={() => {
                         if (!existingProvider) {
-                          // No provider profile yet - just advance, plan activates after profile creation
+                          // No provider profile yet - advance without automatic plan activation
                           if (!selectedTier) setSelectedTier("free");
                           setCurrentStep(2);
                         } else if (!currentSubscription?.subscription) {
@@ -1828,30 +1823,31 @@ export default function ProviderOnboarding() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
-                Connect Your Payment Account
+                {PLATFORM_SUBSCRIPTIONS_PAUSED || PROVIDER_PAYMENTS_PAUSED ? "Payment Account Review" : "Connect Your Payment Account"}
               </CardTitle>
               <CardDescription>
-                Stripe/provider online payments are temporarily unavailable while Stripe reviews OlogyCrew's account.
+                {PLATFORM_SUBSCRIPTIONS_PAUSED || PROVIDER_PAYMENTS_PAUSED ? "Stripe/provider online payments are temporarily unavailable while Stripe reviews OlogyCrew's account." : "Review your Stripe payment-account connection."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {PLATFORM_SUBSCRIPTIONS_PAUSED && !existingProvider?.payoutEnabled && (
+              {(PLATFORM_SUBSCRIPTIONS_PAUSED || PROVIDER_PAYMENTS_PAUSED) && (
                 <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
-                  <p className="font-medium">{PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE}</p>
-                  <p className="mt-1 text-sm">{PLATFORM_SUBSCRIPTION_PAUSE_DETAIL}</p>
+                  {PLATFORM_SUBSCRIPTIONS_PAUSED && <p className="font-medium">{PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE}</p>}
+                  {PROVIDER_PAYMENTS_PAUSED && <p className="mt-1 text-sm">{PROVIDER_PAYMENT_PAUSE_MESSAGE}</p>}
+                  <p className="mt-1 text-sm">Continue free profile setup without connecting Stripe. Existing connection and payment records remain readable and unchanged; a stored connection does not enable payment collection. Unpaid bookings and invoices remain unpaid.</p>
                 </div>
               )}
 
               {existingProvider?.payoutEnabled ? (
                 <div className="text-center py-8">
                   <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold">Payments Connected</h3>
-                  <p className="text-muted-foreground mt-1">You're all set to receive payments</p>
+                  <h3 className="text-lg font-semibold">{PLATFORM_SUBSCRIPTIONS_PAUSED || PROVIDER_PAYMENTS_PAUSED ? "Stored Payment Connection" : "Payments Connected"}</h3>
+                  <p className="text-muted-foreground mt-1">{PLATFORM_SUBSCRIPTIONS_PAUSED || PROVIDER_PAYMENTS_PAUSED ? "This historical connection is retained for reference only. Online payment collection is unavailable during review. Resumption requires Stripe service restoration and a separately approved, tested release." : "Review current payment availability from your dashboard."}</p>
                 </div>
               ) : (selectedTier === "free" || (!selectedTier && (!currentSubscription?.subscription || currentSubscription?.currentTier === "free"))) ? (
                 <div className="text-center py-8">
                   <Shield className="h-12 w-12 text-amber-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold">Upgrade Required</h3>
+                  <h3 className="text-lg font-semibold">{PLATFORM_SUBSCRIPTIONS_PAUSED || PROVIDER_PAYMENTS_PAUSED ? "Free Setup Can Continue" : "Upgrade Required"}</h3>
                   <p className="text-muted-foreground mt-1 max-w-md mx-auto">
                     {PLATFORM_SUBSCRIPTION_PAUSE_DETAIL}
                   </p>
@@ -1869,7 +1865,7 @@ export default function ProviderOnboarding() {
                     </div>
                     <div className="p-4 rounded-lg border text-center">
                       <p className="text-2xl font-bold">Later</p>
-                      <p className="text-sm text-muted-foreground">Stripe setup after review</p>
+                      <p className="text-sm text-muted-foreground">No automatic Stripe resumption</p>
                     </div>
                   </div>
 
@@ -1895,14 +1891,14 @@ export default function ProviderOnboarding() {
                       <Button
                         variant="ghost"
                         onClick={() => {
-                          toast.success("Welcome! You can set up payments later from your dashboard.");
+                          toast.success(PLATFORM_SUBSCRIPTIONS_PAUSED || PROVIDER_PAYMENTS_PAUSED ? "Welcome! Free setup can continue; online payments remain unavailable during review." : "Welcome! Review payment setup from your dashboard.");
                           setLocation("/");
                         }}
                       >
                         Skip for now
                       </Button>
                       <Button
-                        onClick={() => startOnboarding.mutate({ origin: window.location.origin })}
+                        onClick={() => { if (!PLATFORM_SUBSCRIPTIONS_PAUSED) startOnboarding.mutate({ origin: window.location.origin }); }}
                         disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || startOnboarding.isPending}
                         title={PLATFORM_SUBSCRIPTIONS_PAUSED ? PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE : undefined}
                       >

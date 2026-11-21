@@ -14,6 +14,7 @@ import { createSubscriptionInAppNotice } from "./subscriptionNotifications";
 import { assertProviderPaymentActor } from "./paymentAuthorization";
 import { assertPaymentVelocityAllowed, throwIfPaymentVelocityBlocked } from "./paymentVelocity";
 import { assertPlatformSubscriptionBillingOpen, assertProviderTrialStartOpen } from "./providerPaymentPause";
+import { ALL_TRIALS_PAUSED, PLATFORM_SUBSCRIPTIONS_PAUSED } from "../shared/providerPaymentPause";
 
 const stripe = new Stripe(ENV.stripeSecretKey, {
   apiVersion: "2026-01-28.clover" as any,
@@ -138,6 +139,26 @@ export const subscriptionRouter = router({
     if (!sub) return null;
     const entitlement = resolveProviderEntitlement(sub);
 
+    // Keep recorded trial/subscription history unchanged during review. Access
+    // expiry is derived by entitlements, not persisted by a page-load query.
+    if (ALL_TRIALS_PAUSED || PLATFORM_SUBSCRIPTIONS_PAUSED) {
+      const trialEnd = sub.trialEndsAt ? new Date(sub.trialEndsAt) : null;
+      const daysRemaining = trialEnd ? Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / 86400000)) : 0;
+      const isTrialing = sub.status === "trialing" && !!trialEnd && daysRemaining > 0;
+      return {
+        isTrialing,
+        trialExpired: sub.status === "trialing" && !!trialEnd && daysRemaining <= 0,
+        trialTier: sub.tier,
+        daysRemaining,
+        trialEndsAt: sub.trialEndsAt,
+        currentTier: entitlement.effectiveTier,
+        entitlement,
+        showUrgentNudge: false,
+        hasUsedTrial: sub.trialEndsAt != null,
+        reviewPaused: true,
+      };
+    }
+
     // If trialing, check if expired
     if (sub.status === "trialing" && sub.trialEndsAt) {
       const now = new Date();
@@ -224,7 +245,7 @@ export const subscriptionRouter = router({
 
     // Check if already has a subscription
     const existing = await db.getProviderSubscription(provider.id);
-    if (existing && (existing.status === "active" || existing.status === "trialing")) {
+    if (existing && (PLATFORM_SUBSCRIPTIONS_PAUSED || existing.status === "active" || existing.status === "trialing")) {
       return { tier: existing.tier, status: existing.status };
     }
 
@@ -251,12 +272,14 @@ export const subscriptionRouter = router({
 
     // Get current billing interval from Stripe if subscription exists
     let currentInterval: "month" | "year" = "month";
-    if (subscription?.stripeSubscriptionId && subscription.status === "active") {
+    let billingIntervalVerified = false;
+    if (!PLATFORM_SUBSCRIPTIONS_PAUSED && subscription?.stripeSubscriptionId && subscription.status === "active") {
       try {
         const stripeSub = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
         const item = stripeSub.items.data[0];
         if (item?.price.recurring?.interval) {
           currentInterval = item.price.recurring.interval as "month" | "year";
+          billingIntervalVerified = true;
         }
       } catch (e) {
         if (isStripeResourceMissing(e)) {
@@ -271,6 +294,7 @@ export const subscriptionRouter = router({
       currentTier: tier,
       entitlement,
       currentInterval,
+      billingIntervalVerified,
       tierConfig,
       usage: {
         servicesUsed: serviceCount,
@@ -289,6 +313,7 @@ export const subscriptionRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       assertPlatformSubscriptionBillingOpen();
+      if (input.withTrial) assertProviderTrialStartOpen();
       const provider = await db.getProviderByUserId(ctx.user.id);
       if (!provider) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider to subscribe" });
@@ -934,7 +959,7 @@ export const subscriptionRouter = router({
       if (!provider) throw new TRPCError({ code: "FORBIDDEN", message: "Must be a provider" });
 
       const sub = await db.getProviderSubscription(provider.id);
-      if (!sub?.stripeCustomerId) {
+      if (PLATFORM_SUBSCRIPTIONS_PAUSED || !sub?.stripeCustomerId) {
         // No Stripe customer yet — return empty with subscription events from DB
         const events: Array<{
           id: string;
@@ -977,7 +1002,7 @@ export const subscriptionRouter = router({
             date: new Date(sub.currentPeriodStart).toISOString(),
             description: `Started 14-day ${sub.tier === "premium" ? "Business" : "Pro"} trial`,
             amount: null,
-            status: "active",
+            status: sub.trialEndsAt && new Date(sub.trialEndsAt).getTime() <= Date.now() ? "ended" : "active",
             invoicePdfUrl: null,
           });
         }
@@ -995,7 +1020,7 @@ export const subscriptionRouter = router({
           });
         }
 
-        return { items: events, hasMore: false, nextCursor: null };
+        return { items: events, hasMore: false, nextCursor: null, stripeHistoryUnavailable: PLATFORM_SUBSCRIPTIONS_PAUSED };
       }
 
       // Fetch invoices from Stripe

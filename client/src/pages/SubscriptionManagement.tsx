@@ -278,7 +278,7 @@ export default function SubscriptionManagement() {
           <div role="status" className="mb-8 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
             <p className="font-medium">{PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE}</p>
             <p className="mt-1 text-sm">{PLATFORM_SUBSCRIPTION_PAUSE_DETAIL}</p>
-            <p className="mt-2 text-sm">Existing paid subscription records are shown for reference and are not automatically cancelled or changed.</p>
+            <p className="mt-2 text-sm">Existing subscription records are shown for reference and are not automatically cancelled or changed. Pricing below is for comparison; renewal and billing interval are not verified with Stripe during review.</p>
           </div>
         )}
 
@@ -391,12 +391,12 @@ export default function SubscriptionManagement() {
                         ? (currentSub.entitlement.accessEndsAt || currentSub.subscription.currentPeriodEnd
                           ? `Cancels on ${new Date((currentSub.entitlement.accessEndsAt || currentSub.subscription.currentPeriodEnd) as Date | string).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}. Starter begins after that date.`
                           : "Cancellation is scheduled for the end of the current billing period. Starter begins afterward.")
-                        : "Active and renewing"}
+                        : paidBillingUnavailable ? "Recorded active status — renewal is not verified during review" : "Active and renewing"}
                     </p>
                   )}
                   {currentSub?.subscription?.status === "paused" && currentSub?.subscription?.resumesAt && (
                     <p className="text-sm text-muted-foreground">
-                      Resumes on {new Date(currentSub.subscription.resumesAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                      {paidBillingUnavailable ? "Recorded resume date (not verified): " : "Resumes on "}{new Date(currentSub.subscription.resumesAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
                     </p>
                   )}
                 </div>
@@ -588,7 +588,7 @@ export default function SubscriptionManagement() {
                       className="w-full"
                       variant="default"
                       onClick={() => handleSubscribe(plan.tier)}
-                      disabled={subscribing === plan.tier || subscribe.isPending}
+                      disabled={paidBillingUnavailable || subscribing === plan.tier || subscribe.isPending}
                     >
                       {subscribing === plan.tier ? (
                         <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
@@ -718,7 +718,7 @@ export default function SubscriptionManagement() {
                 resumeDate.setDate(resumeDate.getDate() + parseInt(pauseDuration));
                 pauseSubscription.mutate({ resumeDate: resumeDate.toISOString() });
               }}
-              disabled={pauseSubscription.isPending}
+              disabled={paidBillingUnavailable || pauseSubscription.isPending}
             >
               {pauseSubscription.isPending ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Pausing...</>
@@ -794,7 +794,7 @@ export default function SubscriptionManagement() {
                   downgrade.mutate({ targetTier: downgradeTarget });
                 }
               }}
-              disabled={downgrade.isPending}
+              disabled={paidBillingUnavailable || downgrade.isPending}
             >
               {downgrade.isPending ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Downgrading...</>

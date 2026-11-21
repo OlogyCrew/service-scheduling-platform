@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { NavHeader } from "@/components/shared/NavHeader";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { OLOGYCREW_PUBLIC_ORIGIN } from "@shared/publicUrls";
+import { ALL_TRIALS_PAUSED, ALL_TRIAL_PAUSE_MESSAGE, PLATFORM_SUBSCRIPTIONS_PAUSED, PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE, PROVIDER_PAYMENTS_PAUSED, PROVIDER_PAYMENT_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 import "./HelpCenter.css";
 import {
   Search,
@@ -248,7 +249,7 @@ const guideSections: GuideSection[] = [
       {
         title: "Provider Onboarding",
         content:
-          "There are two ways to become a provider: choose Provider at sign-up, or select Become a Provider from your profile. The onboarding wizard covers your profile, categories, services, availability, and plan. Starter is available now, while all new trials, paid Pro/Business checkout, Stripe Connect setup, and online provider payment collection are temporarily unavailable while Stripe reviews OlogyCrew's account. You can finish your profile and return to paid setup after Stripe restores service.",
+          PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? "Choose Provider after signup, or Become a Provider from your profile. Continue free Starter setup for your profile, eligible categories and services, and availability. New trials, paid checkout, billing changes, Stripe Connect setup, and online provider payment collection are unavailable during review. Saved paid-plan choices and historical payment connections do not activate paid service. Payment setup is not required for free onboarding. Existing records remain readable and unchanged." : "There are two ways to become a provider: choose Provider at sign-up, or select Become a Provider from your profile. The onboarding wizard covers your profile, categories, services, availability, and plan. Starter is available now, while all new trials, paid Pro/Business checkout, Stripe Connect setup, and online provider payment collection are temporarily unavailable while Stripe reviews OlogyCrew's account. Free profile setup can continue. Stripe restoration alone does not resume paid setup; a separately approved, tested release is also required.",
         link: "/provider/onboarding",
         linkText: "Start Onboarding",
       },
@@ -350,16 +351,16 @@ const guideSections: GuideSection[] = [
       {
         title: "14-Day Pro Trial",
         content:
-             "New provider trials are temporarily suspended while Stripe reviews OlogyCrew's account. Starter setup remains available. Existing trial and subscription records remain readable and are not automatically cancelled or changed. Paid Pro/Business checkout and billing changes will be restored only after Stripe approves service.",
+          ALL_TRIALS_PAUSED ? "New trials, including local no-card trials for both providers and customers, are temporarily unavailable while Stripe reviews OlogyCrew's account. Starter setup remains available. Existing trial and subscription records remain readable and are not automatically cancelled or changed. Pending trials do not activate automatically. Resumption requires Stripe service restoration followed by a separately approved, tested release; Stripe restoration alone does not reactivate service." : "Check onboarding or Subscription Management for current trial eligibility before proceeding.",
         link: "/provider/subscription",
-        linkText: "Manage Subscription",
+        linkText: PLATFORM_SUBSCRIPTIONS_PAUSED ? "View Subscription Record" : "Manage Subscription",
       },
       {
         title: "Service & Photo Limits",
         content:
           "Each provider tier has different limits for categories, services, and photos: Starter is free; Pro and Business are paid tiers with additional limits and features. The current account-review pause means new paid checkout, billing changes, and Stripe payment features are unavailable. Existing paid subscription records remain visible and are not automatically cancelled or changed. If a trial expires, services remain subject to Starter limits.",
         link: "/provider/subscription",
-        linkText: "Upgrade Your Plan",
+        linkText: PLATFORM_SUBSCRIPTIONS_PAUSED ? "View Plan & Limits" : "Upgrade Your Plan",
       },
     ],
   },
@@ -372,7 +373,7 @@ const guideSections: GuideSection[] = [
       {
         title: "How Payments Work",
         content:
-          "Online provider payment collection and Stripe Connect are temporarily unavailable while Stripe reviews OlogyCrew's account. Do not assume an unpaid booking or invoice has been paid. Starter setup and local no-card trial creation remain available. Existing payment history remains viewable, and any future payment availability will be announced after Stripe review.",
+          PROVIDER_PAYMENTS_PAUSED || PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? "Online provider payment collection, Stripe invoicing, Stripe Connect setup, paid checkout, billing management, and all new trials (including local no-card trials) are unavailable during review. Free accounts and Starter setup remain available. Existing payment, trial, subscription, and connection records remain readable and unchanged. Unpaid bookings and invoices remain unpaid. A historical connection does not establish current payment availability. No payment or trial service resumes automatically. Resumption requires Stripe service restoration followed by a separately approved, tested release. Stored trial dates still determine effective access; the pause does not freeze or extend trials or stop external Stripe billing." : "Online provider payment collection and Stripe Connect are temporarily unavailable while Stripe reviews OlogyCrew's account. Do not assume an unpaid booking or invoice has been paid. Starter setup remains available; check current trial eligibility before proceeding. Existing payment history remains viewable, and any future payment availability will be announced after Stripe review.",
       },
       {
         title: "Pay at Location",
@@ -382,31 +383,31 @@ const guideSections: GuideSection[] = [
       {
         title: "Platform Fees",
         content:
-          "OlogyCrew charges a small 1% platform fee on each booking transaction. This fee is included in the total amount shown at checkout. There are no hidden fees — what you see is what you pay.",
+          PROVIDER_PAYMENTS_PAUSED ? "The listed 1% fee is a reference for online provider payment collection, which is unavailable during review. A booking request or unpaid invoice does not create a Stripe charge or establish receipt of payment. Existing transaction history remains viewable." : "OlogyCrew charges a small 1% platform fee on each booking transaction. This fee is included in the total amount shown at checkout. There are no hidden fees — what you see is what you pay.",
       },
       {
         title: "Provider Subscription Plans",
         content:
-          "Providers can choose from three subscription tiers. During the current Stripe review, Starter setup remains available, while new trials, paid checkout, billing changes, and Stripe-backed payment features are paused. Existing trial and paid subscription records remain visible and are not automatically cancelled or changed.\n\n• Starter (Free) — 1 service category, up to 3 services, 1 photo per service, basic profile, standard search placement\n\n• Pro ($12/mo or $10.08/mo billed annually) — Up to 5 categories, up to 10 services, 3 photos per service, custom URL slug, priority search placement, analytics dashboard\n\n• Business ($20/mo or $16.00/mo billed annually) — Unlimited categories, unlimited services, 5 photos per service, featured listing badge, top search placement, full analytics, custom branding, priority support\n\nSave up to 20% by choosing annual billing (16% off Pro, 20% off Business)! Use the Monthly/Annual toggle on the pricing page to compare. New trials and paid service will be announced only after Stripe review is complete.",
+          "Providers can choose from three subscription tiers. During the current Stripe review, Starter setup remains available, while new trials, paid checkout, billing changes, and Stripe-backed payment features are paused. Existing trial and paid subscription records remain visible and are not automatically cancelled or changed.\n\n• Starter (Free) — 1 service category, up to 3 services, 1 photo per service, basic profile, standard search placement\n\n• Pro ($12/mo or $10.08/mo billed annually) — Up to 5 categories, up to 10 services, 3 photos per service, custom URL slug, priority search placement, analytics dashboard\n\n• Business ($20/mo or $16.00/mo billed annually) — Unlimited categories, unlimited services, 5 photos per service, featured listing badge, top search placement, full analytics, custom branding, priority support\n\nDuring review, paid prices and benefits are reference information only. Use the Monthly/Annual toggle on Pricing to compare reference prices; it does not change billing. There is no automatic resumption: Stripe service restoration must be followed by a separately approved, tested release. Stored trial dates still determine effective access and are not frozen or extended.",
         link: "/provider/subscription",
-        linkText: "Manage Subscription",
+        linkText: PLATFORM_SUBSCRIPTIONS_PAUSED ? "View Subscription Record" : "Manage Subscription",
       },
       {
         title: "Customer Subscription Plans",
         content:
-          "Booking services on OlogyCrew is always free. Customers who manage multiple providers or large crews can optionally upgrade for enhanced organization and priority features:\n\n• Individual (Free) — Save up to 5 providers, book any service, message providers, leave reviews, request quotes\n\n• Coordinator ($12/mo or $10.08/mo billed annually) — Save up to 50 providers, priority booking requests, and organize providers into folders\n\n• Manager ($20/mo or $16.00/mo billed annually) — Unlimited saved providers, bulk quote requests, booking analytics & spend reports, booking exports, and dedicated support\n\nThe Manager plan is ideal for logistics managers, agencies, and production companies who coordinate large crews or book many providers regularly.",
+          "Free Individual accounts remain available. New customer trials, paid checkout, and billing changes are unavailable during review. Existing customer trial and subscription records remain readable and unchanged. Paid prices and benefits below are reference information only:\n\n• Individual (Free) — Save up to 5 providers, book any service, message providers, leave reviews, request quotes\n\n• Coordinator ($12/mo or $10.08/mo billed annually) — Save up to 50 providers, priority booking requests, and organize providers into folders\n\n• Manager ($20/mo or $16.00/mo billed annually) — Unlimited saved providers, bulk quote requests, booking analytics & spend reports, booking exports, and dedicated support\n\nThe Manager plan is ideal for logistics managers, agencies, and production companies who coordinate large crews or book many providers regularly.",
         link: "/pricing",
         linkText: "View Pricing",
       },
       {
         title: "Refunds & Cancellations",
         content:
-          "Refund policies depend on the provider's cancellation terms and the booking status. If a booking is cancelled before the provider confirms, a full refund is typically issued. For confirmed bookings, the provider's cancellation policy applies. If you have a dispute, contact the provider through messaging first, then reach out to our support team if needed.",
+          PROVIDER_PAYMENTS_PAUSED ? "Refund policies depend on the provider's cancellation terms and booking status; those terms are unchanged. Online payment and Stripe-backed refund processing are unavailable during review. An unpaid booking does not create a card charge or refund. Do not assume a historical payment has been refunded. Contact the provider through messaging about a dispute, then contact support about an existing payment or refund." : "Refund policies depend on the provider's cancellation terms and the booking status. If a booking is cancelled before the provider confirms, a full refund is typically issued. For confirmed bookings, the provider's cancellation policy applies. If you have a dispute, contact the provider through messaging first, then reach out to our support team if needed.",
       },
       {
         title: "Using Promo Codes",
         content:
-          "Providers may offer promo codes for discounts on their services. Enter the promo code during checkout to apply the discount. Promo codes may have expiration dates, usage limits, or minimum booking requirements — check the terms when applying.",
+          PROVIDER_PAYMENTS_PAUSED ? "Provider promo codes do not enable Stripe checkout during review. Online payment collection is unavailable, and a discounted price does not mean a booking or invoice has been paid. Existing promo-code records and their terms are unchanged." : "Providers may offer promo codes for discounts on their services. Enter the promo code during checkout to apply the discount. Promo codes may have expiration dates, usage limits, or minimum booking requirements — check the terms when applying.",
       },
     ],
   },
@@ -440,7 +441,7 @@ const guideSections: GuideSection[] = [
       {
         title: "Privacy & Security",
         content:
-          "We take your privacy seriously. Your personal information is protected and never shared without your consent. Payments are processed through Stripe's secure infrastructure. Review our Privacy Policy and Terms of Service for full details.",
+          "We take your privacy seriously. Your personal information is protected and never shared without your consent. Stripe-backed paid checkout and online provider payments are unavailable during review. Do not send card details in messages or support requests. Review our Privacy Policy and Terms of Service for full details.",
         link: "/privacy",
         linkText: "Privacy Policy",
       },
@@ -462,7 +463,7 @@ const faqItems: FAQItem[] = [
   {
     question: "Is it free to create an account?",
     answer:
-      "Yes! Creating an account is completely free for both customers and providers. Customers can browse, book, and message providers on the free plan. Providers can list up to 3 services on the free Starter plan. Optional paid subscriptions unlock additional features.",
+      PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? "Yes. Account creation is free for customers and providers. Customers can browse, request bookings, and message providers on Individual. Starter providers can list up to 3 services in 1 category. New trials and paid checkout are unavailable during review. Existing records remain readable and unchanged." : "Yes! Creating an account is completely free for both customers and providers. Customers can browse, book, and message providers on the free plan. Providers can list up to 3 services on the free Starter plan. Optional paid subscriptions unlock additional features.",
     category: "General",
   },
   {
@@ -492,7 +493,7 @@ const faqItems: FAQItem[] = [
   {
     question: "How do I become a service provider?",
     answer:
-      "There are two ways: (1) When you first sign up, choose \"Provider\" on the role selection screen, or (2) If you already have a customer account, go to your Profile page and click the \"Become a Provider\" card. Either way, you'll enter the 5-step onboarding wizard: set up your business profile, choose your service categories (1 category on Starter, up to 5 on Pro, unlimited on Business), add services with pricing, select your subscription plan (or start a free 14-day Pro trial), and connect Stripe for payments. The entire process takes about 10 minutes.",
+      PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? "Choose Provider after signup, or Become a Provider from your profile. Continue free Starter onboarding to set up your profile, eligible categories and services, and availability. New trials, paid checkout, and Stripe connections are unavailable during review. You do not need to connect Stripe for free setup. Saved paid-plan choices do not activate automatically." : "There are two ways: (1) When you first sign up, choose \"Provider\" on the role selection screen, or (2) If you already have a customer account, go to your Profile page and click the \"Become a Provider\" card. Either way, you'll enter the 5-step onboarding wizard: set up your business profile, choose your service categories (1 category on Starter, up to 5 on Pro, unlimited on Business), add services with pricing, select your subscription plan (or start a free 14-day Pro trial), and connect Stripe for payments. The entire process takes about 10 minutes.",
     category: "Providers",
   },
   {
@@ -522,7 +523,7 @@ const faqItems: FAQItem[] = [
   {
     question: "Can I offer services in multiple categories?",
     answer:
-      "Yes! The number of categories you can offer depends on your subscription tier:\n\n• Starter (Free) — 1 service category\n• Pro ($12/mo) — Up to 5 categories\n• Business ($20/mo) — Unlimited categories\n\nFor example, a salon on the Pro plan could offer services under \"In-Salon Services\", \"Locks & Twist Hairstyles\", \"Mobile Salon\", and more. Upgrade anytime to unlock more categories from the Subscription Management page.",
+      PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? "Your current tier determines category limits: Starter allows 1, Pro up to 5, and Business unlimited. Paid prices and benefits on Pricing are reference information only during review. New trials and upgrades are unavailable. Existing subscription records remain readable and unchanged." : "Yes! The number of categories you can offer depends on your subscription tier:\n\n• Starter (Free) — 1 service category\n• Pro ($12/mo) — Up to 5 categories\n• Business ($20/mo) — Unlimited categories\n\nFor example, a salon on the Pro plan could offer services under \"In-Salon Services\", \"Locks & Twist Hairstyles\", \"Mobile Salon\", and more. Upgrade anytime to unlock more categories from the Subscription Management page.",
     category: "Providers",
   },
   {
@@ -570,7 +571,7 @@ const faqItems: FAQItem[] = [
   {
     question: "How do I get more visibility as a provider?",
     answer:
-      "Your visibility is influenced by provider standing and subscription tier. Build standing by completing your profile, uploading quality portfolio work, setting up eligible payments, completing OlogyCrew bookings, and earning reviews tied to completed bookings. The standing labels are Building History, Established, and Top Activity; they describe profile and platform activity, not credential verification. Pro and Business add the search-priority benefit defined by the plan catalog.",
+      PLATFORM_SUBSCRIPTIONS_PAUSED ? "Complete your profile, upload portfolio work, complete OlogyCrew bookings, and earn booking-linked reviews. Standing reflects profile and platform activity, not credential verification. New Stripe setup and paid upgrades are unavailable during review. Historical payment connections do not enable current collection. Plan search benefits are defined in the plan catalog." : "Your visibility is influenced by provider standing and subscription tier. Build standing by completing your profile, uploading quality portfolio work, setting up eligible payments, completing OlogyCrew bookings, and earning reviews tied to completed bookings. The standing labels are Building History, Established, and Top Activity; they describe profile and platform activity, not credential verification. Pro and Business add the search-priority benefit defined by the plan catalog.",
     category: "Providers",
   },
   {
@@ -648,7 +649,7 @@ const faqItems: FAQItem[] = [
   {
     question: "Do providers set their own prices?",
     answer:
-      "Yes, providers have full control over their pricing. They can set fixed prices, hourly rates, or custom pricing for each service. Some providers also offer deposits or payment plans for larger bookings.",
+      PROVIDER_PAYMENTS_PAUSED ? "Yes. Providers can set fixed prices, hourly rates, or custom service prices. Online payment collection, including Stripe-backed deposits and payment plans, is unavailable during review. A listed price is not a collected payment." : "Yes, providers have full control over their pricing. They can set fixed prices, hourly rates, or custom pricing for each service. Some providers also offer deposits or payment plans for larger bookings.",
     category: "Payments",
   },
   {
@@ -684,19 +685,19 @@ const faqItems: FAQItem[] = [
   {
     question: "What is the 14-day Pro trial?",
     answer:
-      "New providers can try the Pro tier free for 14 days — no credit card required. You get access to all Pro features including up to 5 service categories, up to 10 services, 3 photos per service, custom URL slug, and priority search placement. Start your trial during onboarding or from the Subscription Management page. You'll receive email reminders at 7, 3, and 1 day before expiry. If you don't upgrade, your account reverts to the free Starter tier (1 category, 3 services).",
+      ALL_TRIALS_PAUSED ? "All new trials, including local no-card trials for providers and customers, are temporarily unavailable while Stripe reviews OlogyCrew's account. Free Starter and Individual accounts remain available. Existing trial and subscription records remain readable and unchanged; pending trials do not activate automatically." : "New providers can try the Pro tier free for 14 days — no credit card required. You get access to all Pro features including up to 5 service categories, up to 10 services, 3 photos per service, custom URL slug, and priority search placement. Start your trial during onboarding or from the Subscription Management page. You'll receive email reminders at 7, 3, and 1 day before expiry. If you don't upgrade, your account reverts to the free Starter tier (1 category, 3 services).",
     category: "Providers",
   },
   {
     question: "Can I save money with annual billing?",
     answer:
-      "Yes! Both provider and customer subscriptions offer annual billing at a discount. Pro saves 16% ($10.08/mo billed annually at $120.96/year instead of $12/mo). Business saves 20% ($16.00/mo billed annually at $192.00/year instead of $20/mo). Use the Monthly/Annual toggle on the pricing or subscription page to compare and switch.",
+      PLATFORM_SUBSCRIPTIONS_PAUSED ? "Annual prices on Pricing are reference information only during review. New paid checkout and billing-interval changes are unavailable for providers and customers. The comparison toggle does not change an existing subscription. Existing billing records remain readable and unchanged; this app pause does not stop external Stripe billing." : "Yes! Both provider and customer subscriptions offer annual billing at a discount. Pro saves 16% ($10.08/mo billed annually at $120.96/year instead of $12/mo). Business saves 20% ($16.00/mo billed annually at $192.00/year instead of $20/mo). Use the Monthly/Annual toggle on the pricing or subscription page to compare and switch.",
     category: "Payments",
   },
   {
     question: "What happens when I reach my service or photo limit?",
     answer:
-      "Each subscription tier has limits on how many categories, services, and photos you can add. When you reach your limit, you'll see an upgrade prompt showing what each tier offers. Your existing content is never deleted — you just can't add new ones beyond your tier's limit until you upgrade. Starter allows 1 category, 3 services (1 photo each). Pro allows 5 categories, 10 services (3 photos each). Business offers unlimited categories and services (5 photos each).",
+      PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? "Your current tier determines your limits. Starter allows 1 category, 3 services, and 1 photo per service; Pro allows 5 categories, 10 services, and 3 photos per service; Business allows unlimited categories and services, and 5 photos per service. New trials and paid upgrades are unavailable during review. Existing records are not automatically deleted or rewritten by the pause." : "Each subscription tier has limits on how many categories, services, and photos you can add. When you reach your limit, you'll see an upgrade prompt showing what each tier offers. Your existing content is never deleted — you just can't add new ones beyond your tier's limit until you upgrade. Starter allows 1 category, 3 services (1 photo each). Pro allows 5 categories, 10 services (3 photos each). Business offers unlimited categories and services (5 photos each).",
     category: "Providers",
   },
   {
@@ -1084,6 +1085,14 @@ export default function HelpCenter() {
         </section>
 
         <div className="ology-help-shell ology-help-body">
+          {(PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED || PROVIDER_PAYMENTS_PAUSED) && (
+            <div role="status" aria-live="polite" className="mb-8 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+              {PLATFORM_SUBSCRIPTIONS_PAUSED && <p>{PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE}</p>}
+              {ALL_TRIALS_PAUSED && <p>{ALL_TRIAL_PAUSE_MESSAGE}</p>}
+              {PROVIDER_PAYMENTS_PAUSED && <p>{PROVIDER_PAYMENT_PAUSE_MESSAGE}</p>}
+              <p className="mt-2">Free accounts and Starter setup remain available. Existing records remain readable and unchanged. Unpaid bookings and invoices remain unpaid. No trial or payment service resumes automatically. Resumption requires Stripe service restoration followed by a separately approved, tested release. Stored trial dates still determine effective access; the pause does not freeze or extend trials or stop external Stripe billing.</p>
+            </div>
+          )}
           {!searching && <section className="ology-help-section" aria-labelledby="help-paths-title">
             <div className="ology-help-section-heading">
               <span className="ology-help-eyebrow">Featured resources</span>

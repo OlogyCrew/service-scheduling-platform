@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { ALL_TRIALS_PAUSED, PLATFORM_SUBSCRIPTIONS_PAUSED } from "@shared/providerPaymentPause";
+import { TrialReviewNotice } from "./TrialReviewNotice";
 
 /**
  * TrialCountdownBanner — Shows during active Pro trial.
@@ -23,6 +25,7 @@ export function TrialCountdownBanner({
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed) return null;
+  if (ALL_TRIALS_PAUSED || PLATFORM_SUBSCRIPTIONS_PAUSED) return <TrialReviewNotice />;
 
   const isUrgent = showUrgentNudge || daysRemaining <= 3;
   const endDate = trialEndsAt
@@ -108,6 +111,7 @@ export function TrialExpiredBanner() {
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed) return null;
+  if (ALL_TRIALS_PAUSED || PLATFORM_SUBSCRIPTIONS_PAUSED) return <TrialReviewNotice expired />;
 
   return (
     <div className="relative rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-4 py-3 mb-4">
@@ -167,6 +171,9 @@ export function TrialExpiredGate({ onDowngrade }: { onDowngrade?: () => void }) 
     },
     onError: (error) => toast.error(error.message || "We couldn't continue with Starter. Please try again."),
   });
+
+  // Preserve backend access limits without trapping users behind paused billing.
+  if (ALL_TRIALS_PAUSED || PLATFORM_SUBSCRIPTIONS_PAUSED) return <TrialReviewNotice expired />;
 
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4">

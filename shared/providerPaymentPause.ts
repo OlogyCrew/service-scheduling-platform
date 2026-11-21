@@ -3,7 +3,8 @@
  * Source-controlled and fail-closed: no environment flag, admin bypass,
  * provider exception, expiry, or client parameter can resume collection.
  * Resumption requires a separately approved, tested application release.
- * This policy does not pause platform subscriptions or historical webhooks.
+ * Collection, subscription billing, and new trials are controlled separately
+ * below. Historical webhooks and financial reconciliation are not changed.
  */
 export const PROVIDER_PAYMENTS_PAUSED: boolean = true;
 export const PROVIDER_PAYMENT_PAUSE_MESSAGE = "Online payments to providers are temporarily unavailable.";
@@ -11,18 +12,18 @@ export const PROVIDER_PAYMENT_PAUSE_DETAIL = "You can still browse providers, se
 export const PROVIDER_PAYMENT_PAUSE_POLICY_ID = "provider-collection-pause-2026-11-20";
 
 /**
- * Stripe has closed or is reviewing the account. Keep local Starter/free-trial
+ * Stripe has closed or is reviewing the account. Keep local free-plan and historical trial
  * records available, but fail closed for every action that would create or
  * mutate Stripe billing or Connect state. Existing subscription records remain
  * readable and are not automatically cancelled, downgraded, or rewritten.
  */
 export const PLATFORM_SUBSCRIPTIONS_PAUSED: boolean = true;
 export const PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE = "Paid subscriptions and Stripe account setup are temporarily unavailable while Stripe reviews OlogyCrew's account.";
-export const PLATFORM_SUBSCRIPTION_PAUSE_DETAIL = "Starter setup remains available. New trials, paid checkout, billing changes, and provider payment-account connections are unavailable until Stripe restores service.";
+export const PLATFORM_SUBSCRIPTION_PAUSE_DETAIL = "Starter and Individual free plans remain available. New trials, paid checkout, billing changes, and provider payment-account connections are unavailable during Stripe review. Resumption requires a separately approved, tested release.";
 export const PLATFORM_SUBSCRIPTION_PAUSE_POLICY_ID = "platform-subscription-pause-2026-11-21";
 
 /**
- * New provider trials are paused for the same Stripe account-review period.
+ * All new provider and customer trials are paused for the Stripe account-review period.
  * Existing trial/subscription records remain readable and are not rewritten.
  */
 export const ALL_TRIALS_PAUSED: boolean = true;

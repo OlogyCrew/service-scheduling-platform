@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { appendAuthReturnPath, normalizeAuthReturnPath } from "@shared/authReturnPath";
+import { ALL_TRIALS_PAUSED, ALL_TRIAL_PAUSE_MESSAGE, PLATFORM_SUBSCRIPTIONS_PAUSED, PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 
 function PasswordStrength({ password }: { password: string }) {
   const strength = useMemo(() => {
@@ -162,7 +163,8 @@ export default function SignUp() {
     } catch {}
     const params = new URLSearchParams({ origin });
     if (audience) params.set("audience", audience);
-    if (planTier) params.set("planTier", planTier);
+    // Retain pending choices for reference, but never request paid activation during review.
+    if (planTier && (planTier === "free" || (!PLATFORM_SUBSCRIPTIONS_PAUSED && !ALL_TRIALS_PAUSED))) params.set("planTier", planTier);
     if (returnTo) params.set("returnTo", returnTo);
     window.location.href = `/api/auth/google?${params.toString()}`;
   };
@@ -180,20 +182,32 @@ export default function SignUp() {
           <p className="text-slate-600 mt-2">Create your account to get started.</p>
         </div>
 
+        {(PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED) && (
+          <div role="status" aria-live="polite" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+            {PLATFORM_SUBSCRIPTIONS_PAUSED && <p>{PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE}</p>}
+            {ALL_TRIALS_PAUSED && <p>{ALL_TRIAL_PAUSE_MESSAGE}</p>}
+            <p className="mt-1">Free account creation remains available. A saved paid-plan choice is for reference only and will not activate a trial or paid subscription during setup. Existing records and trial dates are not changed or extended. Resumption requires Stripe service restoration and a separately approved, tested release.</p>
+          </div>
+        )}
+
         {/* Selected Plan Badge */}
         {selectedPlan && (
           <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-semibold text-blue-900">You selected the {selectedPlan.name} Plan</span>
+              <span className="text-sm font-semibold text-blue-900">{selectedPlan.tier !== "free" && (PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED) ? "Saved plan reference:" : "You selected the"} {selectedPlan.name} Plan</span>
             </div>
             <p className="text-xs text-blue-700">
-              {selectedPlan.price === "0" || selectedPlan.price === "0.00"
+              {selectedPlan.tier === "free"
                 ? "Free forever — no credit card required."
-                : `$${selectedPlan.price}/${selectedPlan.interval === "year" ? "yr" : "mo"} — trials are temporarily suspended during the Stripe account review.`}
+                : PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED
+                  ? `Reference price: $${selectedPlan.price} — paid checkout and trials are unavailable during review. See Pricing for billing details.`
+                  : `$${selectedPlan.price}/${selectedPlan.interval === "year" ? "yr" : "mo"}`}
             </p>
             <p className="text-xs text-blue-600 mt-1">
-              Create your account below and your plan will be ready after setup.
+              {selectedPlan.tier !== "free" && (PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED)
+                ? "Create a free account below. This paid plan will not activate after setup, and no pending trial will start automatically."
+                : "Create your account below to continue setup."}
             </p>
           </div>
         )}

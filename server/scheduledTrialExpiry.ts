@@ -6,6 +6,7 @@ import { getDb } from "./db/connection";
 import { customerSubscriptions } from "../drizzle/schema";
 import { providerSubscriptions } from "../drizzle/schema";
 import { eq, and, lte, isNotNull } from "drizzle-orm";
+import { ALL_TRIALS_PAUSED, PLATFORM_SUBSCRIPTIONS_PAUSED } from "../shared/providerPaymentPause";
 
 /**
  * Scheduled handler: /api/scheduled/trial-expiry
@@ -19,6 +20,16 @@ export async function handleScheduledTrialExpiry(req: Request, res: Response) {
     const user = await sdk.authenticateRequest(req);
     if (!user.isCron || !user.taskUid) {
       return res.status(403).json({ error: "cron-only" });
+    }
+
+    // Do not acquire the DB, normalize records, or send conversion reminders
+    // during review. Existing expiry dates and entitlement rules are preserved.
+    if (ALL_TRIALS_PAUSED || PLATFORM_SUBSCRIPTIONS_PAUSED) {
+      return res.json({
+        ok: true, paused: true, customerTrialsExpired: 0,
+        providerTrialsExpired: 0, notificationsSent: 0, errors: [],
+        processedAt: new Date().toISOString(),
+      });
     }
 
     const now = new Date();

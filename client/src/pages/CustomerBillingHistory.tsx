@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { Link } from "wouter";
+import { PLATFORM_SUBSCRIPTIONS_PAUSED } from "@shared/providerPaymentPause";
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -168,6 +169,12 @@ export default function CustomerBillingHistory() {
           </div>
         </div>
 
+        {PLATFORM_SUBSCRIPTIONS_PAUSED && (
+          <div role="status" className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+            Only locally recorded subscription events are shown during Stripe review. Stripe invoices, renewal status, and invoice downloads are not refreshed. This does not mean previous charges or invoices did not exist, and existing records are not changed.
+          </div>
+        )}
+
         {/* Current Plan Summary */}
         {subscriptionSummary.data && (
           <Card className="ology-billing-summary mb-6 border-primary/20 bg-primary/5">
@@ -237,9 +244,9 @@ export default function CustomerBillingHistory() {
             ) : !data?.items?.length ? (
               <div className="text-center py-12">
                 <CreditCard className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-                <p className="text-muted-foreground font-medium">No billing history yet</p>
+                <p className="text-muted-foreground font-medium">{PLATFORM_SUBSCRIPTIONS_PAUSED ? "No locally recorded subscription events" : "No billing history yet"}</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Your subscription charges and plan changes will appear here.
+                  {PLATFORM_SUBSCRIPTIONS_PAUSED ? "Stripe invoice history is temporarily unavailable during review." : "Your subscription charges and plan changes will appear here."}
                 </p>
               </div>
             ) : (

@@ -76,7 +76,9 @@ describe("provider My Subscription visual states", () => {
     expect(monthly).toHaveAttribute("aria-pressed", "false");
     expect(annual).toHaveAttribute("aria-pressed", "true");
     expect(business).toHaveAttribute("data-current-plan", "false");
-    expect(within(business).getByRole("button", { name: "Switch to Annual" })).toBeEnabled();
+    const annualSwitch = within(business).getByRole("button", { name: "Switch to Annual" });
+    expect(annualSwitch).toBeDisabled();
+    fireEvent.click(annualSwitch);
     expect(screen.getAllByText(/Billed as/)).toHaveLength(2);
     expect(mocks.checkout).not.toHaveBeenCalled();
     expect(mocks.downgrade).not.toHaveBeenCalled();

@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CUSTOMER_PLANS, PROVIDER_PLANS } from "@shared/entitlements";
-import { ALL_TRIALS_PAUSED, ALL_TRIAL_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
+import { ALL_TRIALS_PAUSED, ALL_TRIAL_PAUSE_MESSAGE, PLATFORM_SUBSCRIPTIONS_PAUSED, PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE, PROVIDER_PAYMENTS_PAUSED, PROVIDER_PAYMENT_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 import "./CustomerPricing.css";
 
 // ─── PROVIDER PLANS ────────────────────────────────────────────────────────────
@@ -51,10 +51,10 @@ const providerPlans = [
       { text: "Standard search placement", included: true },
       { text: "Booking management", included: true },
       { text: "Customer messaging", included: true },
-      { text: "Stripe payment collection", included: false },
-      { text: "Invoicing & receipts", included: false },
+      { text: PROVIDER_PAYMENTS_PAUSED ? "Stripe payment collection — unavailable during review" : "Stripe payment collection", included: false },
+      { text: PROVIDER_PAYMENTS_PAUSED ? "Stripe invoicing & receipts — unavailable during review" : "Invoicing & receipts", included: false },
       { text: "Tip collection (Zelle, Cash App, Venmo)", included: true },
-      { text: "1% transaction fee on OlogyCrew payments", included: false },
+      { text: PROVIDER_PAYMENTS_PAUSED ? "1% transaction fee — payment collection unavailable during review" : "1% transaction fee on OlogyCrew payments", included: false },
       { text: "Priority search placement", included: false },
       { text: "Analytics dashboard", included: false },
       { text: "Custom branding", included: false },
@@ -74,7 +74,7 @@ const providerPlans = [
     popular: true,
     description: "For providers offering multiple service categories — grow your reach.",
     highlights: [
-      { text: "14 Day Free Trial", icon: Clock },
+      { text: ALL_TRIALS_PAUSED ? "Trials unavailable during review" : "14 Day Free Trial", icon: Clock },
       { text: `Up to ${PROVIDER_PLANS.basic.limits.maxCategories} categories`, icon: Layers },
       { text: `Up to ${PROVIDER_PLANS.basic.limits.maxServices} services`, icon: Briefcase },
       { text: `${PROVIDER_PLANS.basic.limits.maxPhotosPerService} photos per service`, icon: Camera },
@@ -84,12 +84,12 @@ const providerPlans = [
       { text: "Custom profile URL slug", included: true },
       { text: "Priority search placement", included: true },
       { text: "Business analytics", included: true },
-      { text: "Stripe payment collection", included: true },
-      { text: "1% transaction fee", included: true },
+      { text: PROVIDER_PAYMENTS_PAUSED ? "Stripe payment collection — unavailable during review" : "Stripe payment collection", included: !PROVIDER_PAYMENTS_PAUSED },
+      { text: PROVIDER_PAYMENTS_PAUSED ? "1% transaction fee — payment collection unavailable during review" : "1% transaction fee", included: !PROVIDER_PAYMENTS_PAUSED },
       { text: "Email support", included: true },
       { text: "Booking management", included: true },
       { text: "Customer messaging", included: true },
-      { text: "Invoicing & receipts", included: true },
+      { text: PROVIDER_PAYMENTS_PAUSED ? "Stripe invoicing & receipts — unavailable during review" : "Invoicing & receipts", included: !PROVIDER_PAYMENTS_PAUSED },
       { text: "Tip collection (Zelle, Cash App, Venmo)", included: true },
       { text: "Custom branding", included: false },
       { text: "Featured listing badge", included: false },
@@ -106,7 +106,7 @@ const providerPlans = [
     borderColor: "border-amber-500/30",
     description: "Unlimited everything for established businesses and full-service pros.",
     highlights: [
-      { text: "14 Day Free Trial", icon: Clock },
+      { text: ALL_TRIALS_PAUSED ? "Trials unavailable during review" : "14 Day Free Trial", icon: Clock },
       { text: "Unlimited categories", icon: Layers },
       { text: "Unlimited services", icon: Briefcase },
       { text: "5 photos per service", icon: Camera },
@@ -117,9 +117,9 @@ const providerPlans = [
       { text: "Featured listing badge", included: true },
       { text: "Top search placement", included: true },
       { text: "Full analytics suite", included: true },
-      { text: "Stripe payment collection", included: true },
-      { text: "1% transaction fee", included: true },
-      { text: "Invoicing & receipts", included: true },
+      { text: PROVIDER_PAYMENTS_PAUSED ? "Stripe payment collection — unavailable during review" : "Stripe payment collection", included: !PROVIDER_PAYMENTS_PAUSED },
+      { text: PROVIDER_PAYMENTS_PAUSED ? "1% transaction fee — payment collection unavailable during review" : "1% transaction fee", included: !PROVIDER_PAYMENTS_PAUSED },
+      { text: PROVIDER_PAYMENTS_PAUSED ? "Stripe invoicing & receipts — unavailable during review" : "Invoicing & receipts", included: !PROVIDER_PAYMENTS_PAUSED },
       { text: "Tip collection (Zelle, Cash App, Venmo)", included: true },
       { text: "Priority support", included: true },
       { text: "Email notifications", included: true },
@@ -150,7 +150,7 @@ const customerPlans = [
     ],
     features: [
       { text: "Browse all providers & services", included: true },
-      { text: "Book and pay securely", included: true },
+      { text: PROVIDER_PAYMENTS_PAUSED ? "Book services — online payments unavailable during review" : "Book and pay securely", included: true },
       { text: "Message your providers", included: true },
       { text: "Booking notifications", included: true },
       { text: "Priority booking requests", included: false },
@@ -172,7 +172,7 @@ const customerPlans = [
     popular: true,
     description: "For frequent bookers and small event planners managing multiple providers.",
     highlights: [
-      { text: "14 Day Free Trial", icon: Clock },
+      { text: ALL_TRIALS_PAUSED ? "Trials unavailable during review" : "14 Day Free Trial", icon: Clock },
       { text: `Save up to ${CUSTOMER_PLANS.pro.savedProviderLimit} providers`, icon: Heart },
       { text: "Priority booking", icon: Star },
       { text: "Organize into folders", icon: FolderHeart },
@@ -199,7 +199,7 @@ const customerPlans = [
     borderColor: "border-amber-500/30",
     description: "For logistics managers, agencies, and production companies booking large crews.",
     highlights: [
-      { text: "14 Day Free Trial", icon: Clock },
+      { text: ALL_TRIALS_PAUSED ? "Trials unavailable during review" : "14 Day Free Trial", icon: Clock },
       { text: "Unlimited saved providers", icon: Heart },
       { text: "Bulk quote requests", icon: Send },
       { text: "Booking analytics", icon: BarChart3 },
@@ -354,6 +354,15 @@ export default function CustomerPricing() {
           </div>
         </div>
 
+        {(PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED || PROVIDER_PAYMENTS_PAUSED) && (
+          <div role="status" aria-live="polite" className="mb-8 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+            {PLATFORM_SUBSCRIPTIONS_PAUSED && <p>{PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE}</p>}
+            {ALL_TRIALS_PAUSED && <p>{ALL_TRIAL_PAUSE_MESSAGE}</p>}
+            {PROVIDER_PAYMENTS_PAUSED && <p>{PROVIDER_PAYMENT_PAUSE_MESSAGE}</p>}
+            <p className="mt-2">Paid prices and payment features are shown for reference only during review. Free accounts and Starter onboarding remain available. Existing trial, subscription, and payment records remain readable and are not automatically changed. Stored trial dates still determine eligibility; the pause does not extend trials or stop external Stripe billing. Unpaid bookings and invoices remain unpaid. Resumption requires Stripe service restoration and a separately approved, tested release.</p>
+          </div>
+        )}
+
         {/* Billing toggle */}
         <div role="group" aria-label="Choose billing interval" className="ology-pricing-billing flex items-center justify-center gap-3 mb-10">
           <button
@@ -386,7 +395,9 @@ export default function CustomerPricing() {
           <>
             <div className="text-center mb-8">
               <p className="ology-pricing-context text-sm text-muted-foreground max-w-2xl mx-auto">
-                Build your digital home on OlogyCrew. Every plan includes your profile, booking management, and customer messaging. Pro and Business add secure payment collection and invoicing — with no lead fees.
+                {PROVIDER_PAYMENTS_PAUSED
+                  ? "Build your digital home on OlogyCrew. Profile setup, booking management, and customer messaging remain available. Stripe payment collection and invoicing are unavailable during review on every plan."
+                  : "Build your digital home on OlogyCrew. Every plan includes your profile, booking management, and customer messaging. Pro and Business add secure payment collection and invoicing — with no lead fees."}
               </p>
             </div>
 
@@ -439,7 +450,7 @@ export default function CustomerPricing() {
                             <span className="text-muted-foreground">/mo</span>
                             {yearly && (
                               <div className="ology-pricing-billing-note text-xs text-muted-foreground mt-1">
-                                Billed {formatPrice(price * 12)}/year
+                                {PLATFORM_SUBSCRIPTIONS_PAUSED ? "Reference price: " : "Billed "}{formatPrice(price * 12)}/year
                               </div>
                             )}
                           </div>
@@ -458,12 +469,13 @@ export default function CustomerPricing() {
                             variant="outline"
                             className="w-full"
                             onClick={() => {
+                              if (PLATFORM_SUBSCRIPTIONS_PAUSED) return;
                               setDowngradeTarget("free");
                               setShowDowngradeDialog(true);
                             }}
-                            disabled={providerDowngrade.isPending}
+                            disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || providerDowngrade.isPending}
                           >
-                            Downgrade
+                            {PLATFORM_SUBSCRIPTIONS_PAUSED ? "Billing changes unavailable" : "Downgrade"}
                           </Button>
                         ) : (
                           <Button variant="outline" className="w-full" onClick={() => { if (!user) { localStorage.setItem("ologycrew_selected_plan", JSON.stringify({ tier: "free", name: "Starter", price: "0", interval: "month", audience: "provider" })); navigate("/signup?plan=free&audience=provider"); } else { navigate("/provider/onboarding"); } }}>
@@ -474,22 +486,23 @@ export default function CustomerPricing() {
                         <Button
                           variant="outline"
                           className="w-full"
-                          onClick={() => providerCreatePortal.mutate()}
-                          disabled={providerCreatePortal.isPending}
+                          onClick={() => { if (!PLATFORM_SUBSCRIPTIONS_PAUSED) providerCreatePortal.mutate(); }}
+                          disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || providerCreatePortal.isPending}
                         >
-                          {providerCreatePortal.isPending ? "Loading..." : "Manage Subscription"}
+                          {PLATFORM_SUBSCRIPTIONS_PAUSED ? "Billing management unavailable" : providerCreatePortal.isPending ? "Loading..." : "Manage Subscription"}
                         </Button>
                       ) : isDowngrade ? (
                         <Button
                           variant="outline"
                           className="w-full"
                           onClick={() => {
+                            if (PLATFORM_SUBSCRIPTIONS_PAUSED) return;
                             setDowngradeTarget(plan.tier);
                             setShowDowngradeDialog(true);
                           }}
-                          disabled={providerDowngrade.isPending}
+                          disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || providerDowngrade.isPending}
                         >
-                         Downgrade
+                         {PLATFORM_SUBSCRIPTIONS_PAUSED ? "Billing changes unavailable" : "Downgrade"}
                       </Button>
                     ) : (
                        
@@ -497,6 +510,7 @@ export default function CustomerPricing() {
                            className="w-full"
                            variant={plan.popular ? "default" : "outline"}
                            onClick={() => {
+                             if (PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED) return;
                              if (!user) {
                                localStorage.setItem("ologycrew_selected_plan", JSON.stringify({
                                  tier: plan.tier,
@@ -513,12 +527,12 @@ export default function CustomerPricing() {
                                interval: yearly ? "year" : "month",
                              });
                            }}
-                           disabled={ALL_TRIALS_PAUSED || providerCreateCheckout.isPending}
+                           disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED || providerCreateCheckout.isPending}
                          >
                            {providerCreateCheckout.isPending ? (
                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
                            ) : null}
-                           {ALL_TRIALS_PAUSED ? "Unavailable during review" : providerCreateCheckout.isPending ? "Loading..." : (!user ? "Start 14-Day Free Trial" : `Select ${plan.name}`)}
+                           {PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? "Unavailable during review" : providerCreateCheckout.isPending ? "Loading..." : (!user ? "Start 14-Day Free Trial" : `Select ${plan.name}`)}
                          </Button>
                        
                      )}
@@ -563,11 +577,10 @@ export default function CustomerPricing() {
           <>
             <div className="text-center mb-8">
               <p className="ology-pricing-context text-sm text-muted-foreground max-w-xl mx-auto">
-                Booking services on OlogyCrew is always free. Upgrade for priority access, organization tools, and analytics when you're managing multiple providers or large crews.
+                {PLATFORM_SUBSCRIPTIONS_PAUSED
+                  ? "Booking requests, browsing, and messaging remain available on Individual. Coordinator and Manager prices and benefits are shown for reference; new paid subscriptions and billing changes are unavailable during review."
+                  : "Booking services on OlogyCrew is always free. Upgrade for priority access, organization tools, and analytics when you're managing multiple providers or large crews."}
               </p>
-              <div role="status" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
-                {ALL_TRIAL_PAUSE_MESSAGE} Existing customer subscriptions remain readable and are not automatically changed.
-              </div>
             </div>
 
             <div className="ology-pricing-grid grid gap-6 md:grid-cols-3 mb-16">
@@ -617,7 +630,7 @@ export default function CustomerPricing() {
                             <span className="text-muted-foreground">/mo</span>
                             {yearly && (
                               <div className="ology-pricing-billing-note text-xs text-muted-foreground mt-1">
-                                Billed {formatPrice(price * 12)}/year
+                                {PLATFORM_SUBSCRIPTIONS_PAUSED ? "Reference price: " : "Billed "}{formatPrice(price * 12)}/year
                               </div>
                             )}
                           </div>
@@ -636,12 +649,13 @@ export default function CustomerPricing() {
                             variant="outline"
                             className="w-full"
                             onClick={() => {
+                              if (PLATFORM_SUBSCRIPTIONS_PAUSED) return;
                               setDowngradeTarget("free");
                               setShowDowngradeDialog(true);
                             }}
-                            disabled={customerDowngrade.isPending}
+                            disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || customerDowngrade.isPending}
                           >
-                            Downgrade
+                            {PLATFORM_SUBSCRIPTIONS_PAUSED ? "Billing changes unavailable" : "Downgrade"}
                           </Button>
                         ) : (
                           <Button variant="outline" className="w-full" onClick={() => { if (!user) { localStorage.setItem("ologycrew_selected_plan", JSON.stringify({ tier: "free", name: "Individual", price: "0", interval: "month", audience: "customer" })); navigate("/signup?plan=free&audience=customer"); } else { navigate("/browse"); } }}>
@@ -652,32 +666,34 @@ export default function CustomerPricing() {
                         <Button
                           variant="outline"
                           className="w-full"
-                          onClick={() => customerCreatePortal.mutate()}
-                          disabled={customerCreatePortal.isPending}
+                          onClick={() => { if (!PLATFORM_SUBSCRIPTIONS_PAUSED) customerCreatePortal.mutate(); }}
+                          disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || customerCreatePortal.isPending}
                         >
-                          {customerCreatePortal.isPending ? "Loading..." : "Manage Subscription"}
+                          {PLATFORM_SUBSCRIPTIONS_PAUSED ? "Billing management unavailable" : customerCreatePortal.isPending ? "Loading..." : "Manage Subscription"}
                         </Button>
                       ) : isDowngrade ? (
                         <Button
                           variant="outline"
                           className="w-full"
                           onClick={() => {
+                            if (PLATFORM_SUBSCRIPTIONS_PAUSED) return;
                             setDowngradeTarget(plan.tier);
                             setShowDowngradeDialog(true);
                           }}
-                          disabled={customerDowngrade.isPending}
+                          disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || customerDowngrade.isPending}
                         >
-                          Downgrade
+                          {PLATFORM_SUBSCRIPTIONS_PAUSED ? "Billing changes unavailable" : "Downgrade"}
                         </Button>
-                      ) : audience === "customer" && ALL_TRIALS_PAUSED ? (
+                      ) : PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED ? (
                         <Button className="w-full" variant="outline" disabled>
-                          Trials unavailable during review
+                          Unavailable during review
                         </Button>
                       ) : (
                           <Button
                            className="w-full"
                            variant={plan.popular ? "default" : "outline"}
                            onClick={() => {
+                             if (PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED) return;
                              if (!user) {
                                 localStorage.setItem("ologycrew_selected_plan", JSON.stringify({
                                   tier: plan.tier,
@@ -691,7 +707,7 @@ export default function CustomerPricing() {
                               }
                              customerStartTrial.mutate({ tier: plan.tier as "pro" | "business" });
                             }}
-                            disabled={customerStartTrial.isPending}
+                            disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || ALL_TRIALS_PAUSED || customerStartTrial.isPending}
                           >
                             {customerStartTrial.isPending ? (
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -751,19 +767,19 @@ export default function CustomerPricing() {
                   },
                   {
                     q: "Can I accept payments on the free plan?",
-                    a: "Secure Stripe payment collection and provider invoicing are included with Pro and Business. Starter providers can list services, manage bookings, and message customers, then upgrade when they are ready to collect payments through OlogyCrew.",
+                    a: PROVIDER_PAYMENTS_PAUSED ? "Stripe payment collection and invoicing are unavailable on every plan during account review. Starter profile setup, booking management, and messaging remain available. Existing payment history is readable; unpaid bookings and invoices remain unpaid." : "Secure Stripe payment collection and provider invoicing are included with Pro and Business. Starter providers can list services, manage bookings, and message customers, then upgrade when they are ready to collect payments through OlogyCrew.",
                   },
                   {
                     q: "What is the 1% transaction fee?",
-                    a: "OlogyCrew takes a 1% fee when a Pro or Business provider collects a booking payment through the platform. Starter does not include Stripe payment collection, so the fee does not apply there.",
+                    a: PROVIDER_PAYMENTS_PAUSED ? "The listed 1% fee is a reference for platform payment collection, which is unavailable during review. It does not mean a new booking or invoice has been charged or paid." : "OlogyCrew takes a 1% fee when a Pro or Business provider collects a booking payment through the platform. Starter does not include Stripe payment collection, so the fee does not apply there.",
                   },
                   {
                     q: "Can I cancel or downgrade anytime?",
-                    a: "Yes. A move to Starter is scheduled for the end of your current paid period, so you keep paid access until that date and can reactivate without another charge. Paid-tier or billing-interval changes apply to the existing Stripe subscription with proration.",
+                    a: PLATFORM_SUBSCRIPTIONS_PAUSED ? "Billing management, cancellation, downgrade, reactivation, and billing-interval changes are unavailable during review. Existing subscription records remain readable and are not automatically changed. Contact support with questions about an existing subscription." : "Yes. A move to Starter is scheduled for the end of your current paid period, so you keep paid access until that date and can reactivate without another charge. Paid-tier or billing-interval changes apply to the existing Stripe subscription with proration.",
                   },
                   {
                     q: "Is there a free trial for Pro?",
-                    a: "New provider trials are temporarily suspended while Stripe reviews OlogyCrew's account. Starter setup remains available, and existing subscription records are not automatically changed.",
+                    a: ALL_TRIALS_PAUSED ? "New trials are temporarily unavailable while Stripe reviews OlogyCrew's account. Starter setup remains available, and existing trial and subscription records are not automatically changed." : "Eligible new providers can start a 14-day paid-plan trial.",
                   },
                   {
                     q: "How do customers find my services?",
@@ -783,7 +799,7 @@ export default function CustomerPricing() {
                 {[
                   {
                     q: "Is booking really free?",
-                    a: "Yes! Browsing providers, booking services, messaging, and paying securely is completely free. You only pay for the services you book — no platform fees for customers.",
+                    a: PROVIDER_PAYMENTS_PAUSED ? "Browsing, booking requests, and messaging are available on the free Individual plan. Provider services may still have a cost, but online provider payment collection is unavailable during review. A booking request is not a payment." : "Yes! Browsing providers, booking services, messaging, and paying securely is completely free. You only pay for the services you book — no platform fees for customers.",
                   },
                   {
                     q: "Who needs the Coordinator or Manager plan?",
@@ -795,19 +811,19 @@ export default function CustomerPricing() {
                   },
                   {
                     q: "Can I cancel anytime?",
-                    a: "Yes. A move to Individual is scheduled for the end of your current paid period, so you keep paid access until that date and can reactivate without another charge. Paid-tier or billing-interval changes apply to the existing Stripe subscription with proration.",
+                    a: PLATFORM_SUBSCRIPTIONS_PAUSED ? "Billing management, cancellation, downgrade, reactivation, and billing-interval changes are unavailable during review. Existing subscription records remain readable and are not automatically changed. Contact support with questions about an existing subscription." : "Yes. A move to Individual is scheduled for the end of your current paid period, so you keep paid access until that date and can reactivate without another charge. Paid-tier or billing-interval changes apply to the existing Stripe subscription with proration.",
                   },
                   {
                     q: "Is there a free trial for Coordinator or Manager?",
-                    a: "New customer trials are temporarily suspended while Stripe reviews OlogyCrew's account. The Individual plan remains available, and existing subscription records are not automatically changed.",
+                    a: ALL_TRIALS_PAUSED ? "New trials are temporarily unavailable while Stripe reviews OlogyCrew's account. The Individual plan remains available, and existing trial and subscription records are not automatically changed." : "Eligible customers can start a 14-day Coordinator or Manager trial.",
                   },
                   {
                     q: "What payment methods do you accept?",
-                    a: "We accept all major credit and debit cards through Stripe's secure payment processing.",
+                    a: PLATFORM_SUBSCRIPTIONS_PAUSED || PROVIDER_PAYMENTS_PAUSED ? "New paid checkout and online provider payments are unavailable during review. Do not submit card details expecting a new subscription or provider payment to be collected." : "We accept all major credit and debit cards through Stripe's secure payment processing.",
                   },
                   {
                     q: "How is my payment information protected?",
-                    a: "All payments are processed through Stripe, a PCI-compliant payment processor. OlogyCrew never stores your card details — they're encrypted and handled entirely by Stripe.",
+                    a: PLATFORM_SUBSCRIPTIONS_PAUSED || PROVIDER_PAYMENTS_PAUSED ? "Stripe-backed checkout and billing management are unavailable during review. Existing payment history remains readable. Never share card details in messages or support requests." : "All payments are processed through Stripe, a PCI-compliant payment processor. OlogyCrew never stores your card details — they're encrypted and handled entirely by Stripe.",
                   },
                 ].map((faq, i) => (
                   <Card key={i}>
@@ -831,17 +847,19 @@ export default function CustomerPricing() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-600" />
-              Confirm Downgrade
+              {PLATFORM_SUBSCRIPTIONS_PAUSED ? "Billing changes unavailable" : "Confirm Downgrade"}
             </DialogTitle>
             <DialogDescription className="text-left space-y-3 pt-2">
               <p>
-                {downgradeTarget === "free" ? (
+                {PLATFORM_SUBSCRIPTIONS_PAUSED ? (
+                  <>Billing changes are unavailable during review. Your existing subscription record is not changed.</>
+                ) : downgradeTarget === "free" ? (
                   <>This change will take effect at the <strong>end of your current paid period</strong>. You keep your current plan until then and can reactivate it before that date without a new charge.</>
                 ) : (
                   <>This paid-plan change takes effect <strong>immediately</strong>. Stripe applies the prorated billing adjustment to your existing subscription.</>
                 )}
               </p>
-              {audience === "provider" && downgradeTarget === "free" && (
+              {!PLATFORM_SUBSCRIPTIONS_PAUSED && audience === "provider" && downgradeTarget === "free" && (
                 <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm">
                   <p className="font-medium text-amber-800 dark:text-amber-200 mb-1">At the end of the paid period, you'll lose access to:</p>
                   <ul className="text-amber-700 dark:text-amber-300 space-y-1 text-xs">
@@ -853,7 +871,7 @@ export default function CustomerPricing() {
                   </ul>
                 </div>
               )}
-              {audience === "customer" && downgradeTarget === "free" && (
+              {!PLATFORM_SUBSCRIPTIONS_PAUSED && audience === "customer" && downgradeTarget === "free" && (
                 <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm">
                   <p className="font-medium text-amber-800 dark:text-amber-200 mb-1">At the end of the paid period, you'll lose access to:</p>
                   <ul className="text-amber-700 dark:text-amber-300 space-y-1 text-xs">
@@ -873,18 +891,19 @@ export default function CustomerPricing() {
             <Button
               variant="destructive"
               onClick={() => {
+                if (PLATFORM_SUBSCRIPTIONS_PAUSED) return;
                 if (audience === "provider") {
                   providerDowngrade.mutate({ targetTier: downgradeTarget as "free" | "basic" });
                 } else {
                   customerDowngrade.mutate({ targetTier: downgradeTarget as "free" | "pro" });
                 }
               }}
-              disabled={providerDowngrade.isPending || customerDowngrade.isPending}
+              disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || providerDowngrade.isPending || customerDowngrade.isPending}
             >
               {(providerDowngrade.isPending || customerDowngrade.isPending) ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
-              Confirm Downgrade
+              {PLATFORM_SUBSCRIPTIONS_PAUSED ? "Billing changes unavailable" : "Confirm Downgrade"}
             </Button>
           </DialogFooter>
         </DialogContent>

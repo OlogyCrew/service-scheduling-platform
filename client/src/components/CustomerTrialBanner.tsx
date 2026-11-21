@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { ALL_TRIALS_PAUSED, PLATFORM_SUBSCRIPTIONS_PAUSED } from "@shared/providerPaymentPause";
+import { TrialReviewNotice } from "./TrialReviewNotice";
 
 /**
  * CustomerTrialCountdownBanner — Shows during active customer trial.
@@ -25,6 +27,7 @@ export function CustomerTrialCountdownBanner({
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed) return null;
+  if (ALL_TRIALS_PAUSED || PLATFORM_SUBSCRIPTIONS_PAUSED) return <TrialReviewNotice customer />;
 
   const isUrgent = showUrgentNudge || daysRemaining <= 3;
   const endDate = trialEndsAt
@@ -125,6 +128,8 @@ export function CustomerTrialExpiredGate({ onDowngrade }: { onDowngrade?: () => 
     },
     onError: (error) => toast.error(error.message || "We couldn't continue with Individual. Please try again."),
   });
+
+  if (ALL_TRIALS_PAUSED || PLATFORM_SUBSCRIPTIONS_PAUSED) return <TrialReviewNotice customer expired />;
 
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4">

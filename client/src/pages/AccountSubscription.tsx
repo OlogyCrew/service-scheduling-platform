@@ -32,7 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CUSTOMER_PLANS } from "@shared/entitlements";
-import { ALL_TRIALS_PAUSED, ALL_TRIAL_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
+import { ALL_TRIALS_PAUSED, ALL_TRIAL_PAUSE_MESSAGE, PLATFORM_SUBSCRIPTIONS_PAUSED, PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE } from "@shared/providerPaymentPause";
 
 const PLANS = [
   {
@@ -187,7 +187,7 @@ export default function AccountSubscription() {
   });
 
   const handleSubscribe = (tier: string) => {
-    if (tier === "free") return;
+    if (tier === "free" || PLATFORM_SUBSCRIPTIONS_PAUSED) return;
     setSubscribing(tier);
     subscribe.mutate({ 
       tier: tier as "pro" | "business",
@@ -240,6 +240,13 @@ export default function AccountSubscription() {
             Unlock more saved providers, priority booking, and analytics.
           </p>
         </div>
+
+        {PLATFORM_SUBSCRIPTIONS_PAUSED && (
+          <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 mb-6 text-sm text-amber-950">
+            <p className="font-semibold">{PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE}</p>
+            <p className="mt-1">New trials and all billing changes are paused. Your existing records remain readable. The Individual free plan remains available; displayed dates are historical records, not confirmation of Stripe renewal.</p>
+          </div>
+        )}
 
         {/* Annual/Monthly Toggle */}
         <div className="ology-customer-plan-billing-toggle flex items-center justify-center gap-3 mb-8">
@@ -302,7 +309,7 @@ export default function AccountSubscription() {
               <div>
                 <p className="font-medium text-sm">Your Coordinator trial has ended</p>
                 <p className="text-xs text-muted-foreground">
-                  You're on the Individual plan. Subscribe to Coordinator to restore priority booking, folders, and more.
+                  Individual features remain available. New trials and paid subscription changes are unavailable during Stripe review; your recorded trial history is preserved.
                 </p>
               </div>
             </div>
@@ -347,12 +354,12 @@ export default function AccountSubscription() {
                         ? (subData.entitlement.accessEndsAt || subData.subscription.currentPeriodEnd
                           ? `Cancels on ${new Date((subData.entitlement.accessEndsAt || subData.subscription.currentPeriodEnd) as Date | string).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}. Individual begins after that date.`
                           : "Cancellation is scheduled for the end of the current billing period. Individual begins afterward.")
-                        : "Active and renewing"}
+                        : PLATFORM_SUBSCRIPTIONS_PAUSED ? "Recorded active status — renewal is not verified during review" : "Active and renewing"}
                     </p>
                   )}
                   {subData?.subscription?.status === "paused" && subData?.subscription?.resumesAt && (
                     <p className="text-sm text-muted-foreground">
-                      Resumes on {new Date(subData.subscription.resumesAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                      {PLATFORM_SUBSCRIPTIONS_PAUSED ? "Recorded resume date (not verified): " : "Resumes on "}{new Date(subData.subscription.resumesAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
                     </p>
                   )}
                 </div>
@@ -363,7 +370,7 @@ export default function AccountSubscription() {
                     variant="default" 
                     size="sm"
                     onClick={() => resumeSubscription.mutate()}
-                    disabled={resumeSubscription.isPending}
+                    disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || resumeSubscription.isPending}
                   >
                     {resumeSubscription.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -382,7 +389,7 @@ export default function AccountSubscription() {
                           interval: subData.currentInterval,
                           withTrial: false,
                         })}
-                        disabled={subscribe.isPending}
+                        disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || subscribe.isPending}
                       >
                         {subscribe.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Play className="h-4 w-4 mr-1" />}
                         Keep Current Plan
@@ -392,6 +399,7 @@ export default function AccountSubscription() {
                         variant="outline" 
                         size="sm"
                         onClick={() => setShowPauseDialog(true)}
+                        disabled={PLATFORM_SUBSCRIPTIONS_PAUSED}
                       >
                         <Pause className="h-4 w-4 mr-1" />
                         Pause Plan
@@ -401,7 +409,7 @@ export default function AccountSubscription() {
                       variant="outline" 
                       size="sm"
                       onClick={() => manageSubscription.mutate()}
-                      disabled={manageSubscription.isPending}
+                      disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || manageSubscription.isPending}
                     >
                       {manageSubscription.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -541,7 +549,7 @@ export default function AccountSubscription() {
                       className="w-full"
                       variant="default"
                       onClick={() => handleSubscribe(plan.tier)}
-                      disabled={subscribing === plan.tier || subscribe.isPending}
+                      disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || subscribing === plan.tier || subscribe.isPending}
                     >
                       {subscribing === plan.tier ? (
                         <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
@@ -558,7 +566,7 @@ export default function AccountSubscription() {
                           setDowngradeTarget("free");
                           setShowDowngradeDialog(true);
                         }}
-                        disabled={downgrade.isPending}
+                        disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || downgrade.isPending}
                       >
                         {downgrade.isPending && downgradeTarget === "free" ? (
                           <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
@@ -583,7 +591,7 @@ export default function AccountSubscription() {
                           handleSubscribe(plan.tier);
                         }
                       }}
-                      disabled={(ALL_TRIALS_PAUSED && currentTier === "free" && !trialStatus?.hasUsedTrial) || subscribing === plan.tier || subscribe.isPending || startTrial.isPending || (downgrade.isPending && downgradeTarget === plan.tier)}
+                      disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || (ALL_TRIALS_PAUSED && currentTier === "free" && !trialStatus?.hasUsedTrial) || subscribing === plan.tier || subscribe.isPending || startTrial.isPending || (downgrade.isPending && downgradeTarget === plan.tier)}
                     >
                       {subscribing === plan.tier || startTrial.isPending ? (
                         <>
@@ -665,7 +673,7 @@ export default function AccountSubscription() {
                 resumeDate.setDate(resumeDate.getDate() + parseInt(pauseDuration));
                 pauseSubscription.mutate({ resumeDate: resumeDate.toISOString() });
               }}
-              disabled={pauseSubscription.isPending}
+              disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || pauseSubscription.isPending}
             >
               {pauseSubscription.isPending ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Pausing...</>
@@ -734,7 +742,7 @@ export default function AccountSubscription() {
                   downgrade.mutate({ targetTier: downgradeTarget });
                 }
               }}
-              disabled={downgrade.isPending}
+              disabled={PLATFORM_SUBSCRIPTIONS_PAUSED || downgrade.isPending}
             >
               {downgrade.isPending ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>

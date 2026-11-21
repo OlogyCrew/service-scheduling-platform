@@ -6,6 +6,7 @@ import * as db from "./db";
 import { TRPCError } from "@trpc/server";
 import { providerHasFeature } from "@shared/entitlements";
 import { assertPlatformSubscriptionBillingOpen } from "./providerPaymentPause";
+import { PLATFORM_SUBSCRIPTIONS_PAUSED, PROVIDER_PAYMENTS_PAUSED } from "../shared/providerPaymentPause";
 
 const stripe = new Stripe(ENV.stripeSecretKey!, {
   apiVersion: "2026-01-28.clover" as any,
@@ -136,6 +137,21 @@ export const stripeConnectRouter = router({
     if (!provider) throw new TRPCError({ code: "NOT_FOUND", message: "Provider profile not found" });
     const currentTier = await db.getProviderTier(provider.id);
     const hasPaymentEntitlement = providerHasFeature(currentTier, "paymentCollection");
+
+    if (PLATFORM_SUBSCRIPTIONS_PAUSED || PROVIDER_PAYMENTS_PAUSED) {
+      // Preserve stored Connect identifiers/status; never refresh or rewrite
+      // them from Stripe on a page load while collection is paused.
+      return {
+        connected: !!provider.stripeAccountId,
+        status: provider.stripeAccountStatus || "not_connected",
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        detailsSubmitted: !!provider.stripeOnboardingComplete,
+        paymentCollectionEnabled: false,
+        requiresPaidPlan: !hasPaymentEntitlement,
+        reviewPaused: true,
+      };
+    }
 
     if (!provider.stripeAccountId) {
       return {

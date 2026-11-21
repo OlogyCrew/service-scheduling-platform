@@ -11,7 +11,8 @@ import { isStripeResourceMissing, requireStripeSubscriptionPeriodEnd } from "./s
 import { createSubscriptionInAppNotice } from "./subscriptionNotifications";
 import { assertPaymentActorCanInitiate } from "./paymentAuthorization";
 import { assertPaymentVelocityAllowed, throwIfPaymentVelocityBlocked } from "./paymentVelocity";
-import { assertAllTrialStartOpen } from "./providerPaymentPause";
+import { assertAllTrialStartOpen, assertPlatformSubscriptionBillingOpen } from "./providerPaymentPause";
+import { ALL_TRIALS_PAUSED, PLATFORM_SUBSCRIPTIONS_PAUSED } from "../shared/providerPaymentPause";
 
 const stripe = new Stripe(ENV.stripeSecretKey, { apiVersion: "2026-01-28.clover" as any });
 
@@ -82,12 +83,14 @@ export const customerSubscriptionRouter = router({
 
     // Get current billing interval from Stripe if subscription exists
     let currentInterval: "month" | "year" = "month";
-    if (subscription?.stripeSubscriptionId && subscription.status === "active") {
+    let billingIntervalVerified = false;
+    if (!PLATFORM_SUBSCRIPTIONS_PAUSED && subscription?.stripeSubscriptionId && subscription.status === "active") {
       try {
         const stripeSub = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
         const item = stripeSub.items.data[0];
         if (item?.price.recurring?.interval) {
           currentInterval = item.price.recurring.interval as "month" | "year";
+          billingIntervalVerified = true;
         }
       } catch (e) {
         if (isStripeResourceMissing(e)) {
@@ -102,6 +105,7 @@ export const customerSubscriptionRouter = router({
       currentTier: tier,
       entitlement,
       currentInterval,
+      billingIntervalVerified,
       tierConfig,
       usage: {
         savedProviders: favoriteCount,
@@ -124,6 +128,8 @@ export const customerSubscriptionRouter = router({
       withTrial: z.boolean().default(true),
     }))
     .mutation(async ({ ctx, input }) => {
+      assertPlatformSubscriptionBillingOpen();
+      if (input.withTrial) assertAllTrialStartOpen();
       assertPaymentActorCanInitiate(ctx.user, "customer_subscription");
       const existingSubForCheck = await db.getCustomerSubscription(ctx.user.id);
       const velocity = await assertPaymentVelocityAllowed({
@@ -287,6 +293,7 @@ export const customerSubscriptionRouter = router({
 
   // Create portal session for managing subscription
   createPortalSession: protectedProcedure.mutation(async ({ ctx }) => {
+    assertPlatformSubscriptionBillingOpen();
     const sub = await db.getCustomerSubscription(ctx.user.id);
     if (!sub?.stripeCustomerId) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "No active subscription found" });
@@ -381,6 +388,7 @@ export const customerSubscriptionRouter = router({
       targetTier: z.enum(["free", "pro"]),
     }))
     .mutation(async ({ ctx, input }) => {
+      assertPlatformSubscriptionBillingOpen();
       const targetTier = input.targetTier;
       const sub = await db.getCustomerSubscription(ctx.user.id);
       const entitlement = resolveCustomerEntitlement(sub);
@@ -572,6 +580,7 @@ export const customerSubscriptionRouter = router({
       resumeDate: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      assertPlatformSubscriptionBillingOpen();
       const sub = await db.getCustomerSubscription(ctx.user.id);
       if (!sub || !sub.stripeSubscriptionId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No active subscription to pause" });
@@ -641,6 +650,7 @@ export const customerSubscriptionRouter = router({
 
   // Resume customer subscription
   resume: protectedProcedure.mutation(async ({ ctx }) => {
+    assertPlatformSubscriptionBillingOpen();
     const sub = await db.getCustomerSubscription(ctx.user.id);
     if (!sub || !sub.stripeSubscriptionId) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "No subscription found" });
@@ -752,6 +762,26 @@ export const customerSubscriptionRouter = router({
     const sub = await db.getCustomerSubscription(ctx.user.id);
     if (!sub) return null;
     const entitlement = resolveCustomerEntitlement(sub);
+
+    // During review, derive status from the recorded dates without normalization
+    // writes or trial reminders. Expired access still resolves to Individual.
+    if (ALL_TRIALS_PAUSED || PLATFORM_SUBSCRIPTIONS_PAUSED) {
+      const trialEnd = sub.trialEndsAt ? new Date(sub.trialEndsAt) : null;
+      const daysRemaining = trialEnd ? Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / 86400000)) : 0;
+      const isTrialing = sub.status === "trialing" && !!trialEnd && daysRemaining > 0;
+      return {
+        isTrialing,
+        trialExpired: sub.status === "trialing" && !!trialEnd && daysRemaining <= 0,
+        daysRemaining,
+        trialEndsAt: sub.trialEndsAt,
+        currentTier: entitlement.effectiveTier,
+        entitlement,
+        showUrgentNudge: false,
+        requiresPayment: false,
+        hasUsedTrial: sub.trialEndsAt != null,
+        reviewPaused: true,
+      };
+    }
 
     // If trialing, check if expired
     if (sub.status === "trialing" && sub.trialEndsAt) {
@@ -868,7 +898,7 @@ export const customerSubscriptionRouter = router({
         });
       }
 
-      if (!sub?.stripeCustomerId) {
+      if (PLATFORM_SUBSCRIPTIONS_PAUSED || !sub?.stripeCustomerId) {
         // No Stripe customer yet — return events from DB only
         if (sub?.status === "trialing" && sub.trialEndsAt) {
           events.push({
@@ -877,7 +907,7 @@ export const customerSubscriptionRouter = router({
             date: new Date(sub.createdAt).toISOString(),
             description: `Started 14-day ${sub.tier === "business" ? "Manager" : "Coordinator"} trial`,
             amount: null,
-            status: "active",
+            status: new Date(sub.trialEndsAt).getTime() <= Date.now() ? "ended" : "active",
             invoicePdfUrl: null,
           });
         }
@@ -894,7 +924,7 @@ export const customerSubscriptionRouter = router({
           });
         }
 
-        return { items: events, hasMore: false, nextCursor: null };
+        return { items: events, hasMore: false, nextCursor: null, stripeHistoryUnavailable: PLATFORM_SUBSCRIPTIONS_PAUSED };
       }
 
       // Fetch invoices from Stripe
