@@ -1,8 +1,15 @@
 import { FlaskConical } from "lucide-react";
 import { isUnpublishedPreviewHost } from "@/lib/previewEnvironment";
+import { useEffect, useState } from "react";
 
 export function PreviewEnvironmentBanner() {
-  if (typeof window === "undefined" || !isUnpublishedPreviewHost(window.location.hostname)) {
+  const [isPreview, setIsPreview] = useState(false);
+
+  useEffect(() => {
+    setIsPreview(isUnpublishedPreviewHost(window.location.hostname));
+  }, []);
+
+  if (!isPreview) {
     return null;
   }
 
