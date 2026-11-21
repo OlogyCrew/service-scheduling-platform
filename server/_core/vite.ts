@@ -15,12 +15,15 @@ export async function injectOgTags(url: string, template: string, _requestOrigin
   const pathname = url.split(/[?#]/)[0];
   let ogTags = "";
   let jsonLd = "";
+  let routeMetadataIsSpecific = false;
+  let primaryMetadataWasExplicitlySet = false;
 
   // Provider profile pages (/p/:slug)
   const providerMatch = url.match(/^\/p\/([^/?#]+)/);
   if (providerMatch) {
     ogTags = await getProviderOgTags(providerMatch[1], origin);
     jsonLd = await getProviderJsonLd(providerMatch[1], origin);
+    routeMetadataIsSpecific = Boolean(ogTags);
   }
 
   // Clean provider profile URLs (/:slug) — check after /p/ but before other routes
@@ -33,6 +36,7 @@ export async function injectOgTags(url: string, template: string, _requestOrigin
       if (!knownRoutes.includes(slug) && !slug.startsWith('p/')) {
         ogTags = await getProviderOgTags(slug, origin);
           jsonLd = await getProviderJsonLd(slug, origin);
+        routeMetadataIsSpecific = Boolean(ogTags);
       }
     }
   }
@@ -43,6 +47,7 @@ export async function injectOgTags(url: string, template: string, _requestOrigin
     if (serviceMatch) {
       ogTags = await getServiceOgTags(parseInt(serviceMatch[1], 10), origin);
       jsonLd = await getServiceJsonLd(parseInt(serviceMatch[1], 10), origin);
+      routeMetadataIsSpecific = Boolean(ogTags);
     }
   }
 
@@ -52,6 +57,7 @@ export async function injectOgTags(url: string, template: string, _requestOrigin
     if (categoryMatch) {
       ogTags = await getCategoryOgTags(categoryMatch[1], origin);
       jsonLd = await getCategoryJsonLd(categoryMatch[1], origin);
+      routeMetadataIsSpecific = Boolean(ogTags);
     }
   }
 
@@ -89,6 +95,7 @@ export async function injectOgTags(url: string, template: string, _requestOrigin
     );
     template = template.replace(/<title>[^<]*<\/title>/, "<title>The OlogyCrew Platform | Services, Bookings & Business Tools</title>");
     template = template.replace(/<meta name="description" content="[^"]*"\s*\/>/, '<meta name="description" content="Discover how OlogyCrew connects service discovery, direct bookings or quotes, and provider business tools on one platform." />');
+    primaryMetadataWasExplicitlySet = true;
   }
 
   // Public Help & Resources library
@@ -132,6 +139,7 @@ export async function injectOgTags(url: string, template: string, _requestOrigin
     ogTags = getProviderBenefitsOgTags(origin);
     template = template.replace(/<title>[^<]*<\/title>/, "<title>For Service Providers | OlogyCrew</title>");
     template = template.replace(/<meta name="description" content="[^"]*"\s*\/>/, '<meta name="description" content="Build a public home for your services on OlogyCrew. Help customers find your work, manage bookings and conversations, and compare plans for additional business tools." />');
+    primaryMetadataWasExplicitlySet = true;
   }
 
   if (!ogTags && (pathname === "/browse" || pathname === "/search")) {
@@ -175,6 +183,22 @@ export async function injectOgTags(url: string, template: string, _requestOrigin
   if (ogTags) {
     // Remove default OG tags from index.html before injecting page-specific ones
     // Social media crawlers use the FIRST og: tags they find, so we must remove defaults
+    // The same route-specific values must also replace the document title and
+    // description. Otherwise crawlers that use the primary HTML metadata see the
+    // generic homepage values even though the social card is route-specific.
+    if (!primaryMetadataWasExplicitlySet && (routeMetadataIsSpecific || pathname !== "/")) {
+      const title = ogTags.match(/<meta property="og:title" content="([^"]*)"/i)?.[1];
+      const description = ogTags.match(/<meta property="og:description" content="([^"]*)"/i)?.[1];
+      if (title) {
+        template = template.replace(/<title>[^<]*<\/title>/i, `<title>${title}</title>`);
+      }
+      if (description) {
+        template = template.replace(
+          /<meta name="description" content="[^"]*"\s*\/?\s*>/i,
+          `<meta name="description" content="${description}" />`,
+        );
+      }
+    }
     template = template.replace(/<meta property="og:[^"]*" content="[^"]*"\s*\/>\s*\n?/g, "");
     template = template.replace(/<meta name="twitter:[^"]*" content="[^"]*"\s*\/>\s*\n?/g, "");
     template = template.replace("</head>", `    ${ogTags}\n  </head>`);

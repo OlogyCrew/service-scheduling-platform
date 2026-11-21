@@ -71,6 +71,16 @@ describe("people-first OG injection into public HTML", () => {
     expect(value(html, "og:image:height")).toBe("1688");
   });
 
+  it("keeps the primary HTML title and description aligned with the route-specific share card", async () => {
+    const html = await injectOgTags("/browse", template, internalOrigin);
+    expect(html.match(/<title>[^<]*<\/title>/g)).toHaveLength(1);
+    expect(html).toContain("<title>Find Your Person — Explore OlogyCrew</title>");
+    expect(html).toContain(
+      '<meta name="description" content="Explore service categories and real professional profiles. Compare available services, then book or request a quote when you are ready." />',
+    );
+    expect(html).not.toContain("<title>OlogyCrew — Local work, well done</title>");
+  });
+
   it("keeps distinct provider and service cards while aligning their palette and avoiding a false direct-booking promise", () => {
     const providerCard = dynamicCards.split("export async function generateProviderOgImage")[1].split("export async function generateHomepageOgImage")[0];
     const serviceCard = dynamicCards.split("export async function generateServiceOgImage")[1].split("export async function generateProviderOgImage")[0];
