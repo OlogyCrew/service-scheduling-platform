@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronUp, Mail, Eye } from "lucide-react";
 
-const SITE_URL = window.location.origin;
+const SITE_URL = typeof window === "undefined" ? "https://ologycrew.com" : window.location.origin;
 const LOGO_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663275372790/QD7eHrqop9F5cN2Q4sYGpD/ologycrew-logo-bpuqPGEAxn4sv2cDWUMqrC.webp";
 
 function formatEmailHTML(body: string): string {

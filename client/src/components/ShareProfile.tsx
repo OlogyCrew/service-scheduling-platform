@@ -33,7 +33,7 @@ export function ShareProfile({
   const qrRef = useRef<HTMLDivElement>(null);
 
   // The canonical URL (what users see, copy, and share)
-  const fullUrl = url.startsWith("http") ? url : `${window.location.origin}${url}`;
+  const fullUrl = url.startsWith("http") ? url : `${typeof window === "undefined" ? "https://ologycrew.com" : window.location.origin}${url}`;
   // Use the clean canonical URL for all sharing — /slug already has OG tags via SSR
   const socialUrl = fullUrl;
   const encodedUrl = encodeURIComponent(socialUrl);

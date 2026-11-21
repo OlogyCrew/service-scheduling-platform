@@ -6,7 +6,7 @@
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>OlogyCrew — Local work, well done</title>
+    <!--app-head-->
     <link rel="icon" type="image/x-icon" href="/manus-storage/favicon_0d5061d0.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/manus-storage/favicon-32x32_cd6296c5.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/manus-storage/favicon-16x16_2e983084.png" />
@@ -16,21 +16,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="OlogyCrew" />
-    <meta name="description" content="Find independent local professionals on OlogyCrew. Explore real profiles, compare available services and reviews, then book or request a quote directly." />
-    <meta name="keywords" content="service scheduling, book appointments, handyman, barber, massage therapist, personal trainer, pet grooming, photography, DJ services, home cleaning, auto detailing, mobile barber, salon services, fitness classes, power washing, event planning, cybersecurity, dental care, financial advisor, booking platform, service professionals, online booking, appointment scheduling, local services, OlogyCrew" />
-    <!-- Open Graph / Social Sharing -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://ologycrew.com/" />
-    <meta property="og:title" content="OlogyCrew — Good work starts with people" />
-    <meta property="og:description" content="Meet the people behind the work. Explore independent service professionals, see their profiles and services, then book or request a quote directly." />
-    <meta property="og:image" content="https://ologycrew.com/manus-storage/ologycrew-people-first-social-1200x630_05d25d5b.jpg" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:site_name" content="OlogyCrew" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="OlogyCrew — Good work starts with people" />
-    <meta name="twitter:description" content="Meet the people behind the work. Explore independent service professionals, see their profiles and services, then book or request a quote directly." />
-    <meta name="twitter:image" content="https://ologycrew.com/manus-storage/ologycrew-people-first-social-1200x630_05d25d5b.jpg" />
     <!-- iOS Splash Screens -->
     <link rel="apple-touch-startup-image" href="/manus-storage/splash-2048x2732_337653ec.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
     <link rel="apple-touch-startup-image" href="/manus-storage/splash-1668x2388_9d142148.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
@@ -45,37 +30,8 @@
   </head>
 
   <body>
-    <div id="root">
-      <!-- SEO fallback content for crawlers that don't execute JavaScript -->
-      <noscript>
-        <h1>Good work starts with people — OlogyCrew</h1>
-        <p>Find independent service professionals and explore real profiles, services, and available reviews. Book a service or request a quote directly through OlogyCrew.</p>
-        <h2>Popular Service Categories</h2>
-        <ul>
-          <li>Barber Shop &amp; Mobile Barber Services</li>
-          <li>Massage Therapist &amp; Wellness</li>
-          <li>Personal Trainer &amp; Fitness Classes</li>
-          <li>Photography &amp; Videography Services</li>
-          <li>Handyman &amp; Home Renovation</li>
-          <li>Home Cleaning &amp; Power Washing</li>
-          <li>Auto Detailing &amp; Maintenance (Mobile &amp; In-Shop)</li>
-          <li>DJ &amp; Music Services</li>
-          <li>Event Planning &amp; Party Rentals</li>
-          <li>Pet Care &amp; Grooming</li>
-          <li>Salon Services (In-Salon &amp; Mobile)</li>
-          <li>Cybersecurity &amp; Tech Support</li>
-          <li>Dental Care &amp; Eye Care</li>
-          <li>Financial Advisor &amp; Professional Coaching</li>
-          <li>Dance Lessons &amp; Instructors</li>
-          <li>Virtual Assistant &amp; Virtual Events</li>
-        </ul>
-        <h2>Why Choose OlogyCrew?</h2>
-        <p>OlogyCrew gives you everything in one place: your professional profile, services listing, real-time booking, secure payments, branded invoices, and customer management. No lead fees, no gatekeeping — you own the relationship.</p>
-        <h2>How It Works for Providers</h2>
-        <p>1. Create your profile — your digital business card. 2. List your services with pricing and availability. 3. Share your OlogyCrew link everywhere. 4. Get booked and get paid directly to your bank.</p>
-      </noscript>
-    </div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div id="root"><!--app-html--></div>
+    <script type="module" src="/src/entry-client.tsx"></script>
     <script
       defer
       src="%VITE_ANALYTICS_ENDPOINT%/umami"

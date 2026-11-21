@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { trpc } from "@/lib/trpc";
+import { DirectoryBreadcrumbs } from "@/components/shared/DirectoryBreadcrumbs";
 import { formatDuration, getDurationPricingLabel } from "../../../shared/duration";
 import { getServiceTypeLabel } from "../../../shared/serviceTypeLabels";
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -159,6 +160,10 @@ export default function ServiceDetail() {
   const { data: provider } = trpc.provider.getById.useQuery(
     { id: service?.providerId || 0 },
     { enabled: !!service }
+  );
+  const { data: category } = trpc.category.getById.useQuery(
+    { id: service?.categoryId || 0 },
+    { enabled: !!service?.categoryId },
   );
   const canAcceptPlatformPayments = !!(provider as any)?.canAcceptPlatformPayments;
   const { data: payAtLocationSettings } = trpc.offlinePayment.getProviderSettingsForService.useQuery(
@@ -917,32 +922,13 @@ export default function ServiceDetail() {
         </div>
       )}
 
-      {/* Breadcrumb */}
-      <div className="bg-muted/30 border-b">
-        <div className="container py-3">
-          <nav className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Link href="/" className="hover:text-foreground transition-colors">
-              Home
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <Link href="/browse" className="hover:text-foreground transition-colors">
-              Browse
-            </Link>
-            {(fromProvider || provider) && (
-              <>
-                <ChevronRight className="h-3.5 w-3.5" />
-                <Link href={`/${fromProvider || provider?.profileSlug || provider?.id}`} className="hover:text-foreground transition-colors truncate max-w-[180px]">
-                  {provider?.businessName || "Provider"}
-                </Link>
-              </>
-            )}
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span className="text-foreground font-medium truncate max-w-[200px]">
-              {service.name}
-            </span>
-          </nav>
-        </div>
-      </div>
+      <DirectoryBreadcrumbs items={[
+        { label: "Home", href: "/" },
+        { label: "Browse", href: "/browse" },
+        ...(category ? [{ label: category.name, href: category.slug ? `/category/${category.slug}` : undefined }] : []),
+        ...((fromProvider || provider) ? [{ label: provider?.businessName || "Provider", href: `/${fromProvider || provider?.profileSlug || provider?.id}` }] : []),
+        { label: service.name },
+      ]} />
 
       <div className="container py-8 max-w-6xl">
         {agentHandoff ? (
@@ -997,7 +983,7 @@ export default function ServiceDetail() {
                       </div>
                     )}
                     <ShareProfile
-                      url={`${window.location.origin}/service/${id}`}
+                      url={`/service/${id}`}
                       title={`${service.name} — ${provider?.businessName || 'OlogyCrew'}`}
                       description={service.description || `Book ${service.name} on OlogyCrew`}
                       trigger={

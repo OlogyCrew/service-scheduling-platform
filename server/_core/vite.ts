@@ -3,11 +3,27 @@ import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
+import { pathToFileURL } from "url";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 import { getProviderOgTags, getServiceOgTags, getCategoryOgTags, getHomepageOgTags, getProviderBenefitsOgTags, getPublicPageOgTags } from "../ogTags";
 import { getCategoryJsonLd, getHomepageJsonLd, getProviderJsonLd, getServiceJsonLd } from "../structuredData";
 import { OLOGYCREW_PUBLIC_ORIGIN } from "../../shared/publicUrls";
+import { buildSsrPrefetch } from "./ssrCaller";
+
+const escapeHtml = (value: unknown) => String(value ?? "")
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+export function composeSsrHtml(template: string, rendered: { html: string; state: string; head: { title: string; description: string; canonicalPath: string; noindex?: boolean; notFound?: boolean } }, origin: string) {
+  const canonicalOrigin = process.env.CANONICAL_ORIGIN || origin;
+  const canonical = `${canonicalOrigin.replace(/\/$/, "")}${rendered.head.canonicalPath}`;
+  const headTags = `<title>${escapeHtml(rendered.head.title)}</title>\n    <meta name="description" content="${escapeHtml(rendered.head.description)}" />\n    <link rel="canonical" href="${escapeHtml(canonical)}" />\n    <meta name="robots" content="${rendered.head.noindex || rendered.head.notFound ? "noindex, nofollow" : "index, follow"}" />`;
+  let html = template.replace(/<title>[\s\S]*?<\/title>/gi, "").replace(/<meta name="description"[^>]*>/gi, "").replace(/<link rel="canonical"[^>]*>/gi, "").replace(/<meta name="robots"[^>]*>/gi, "");
+  html = html.replace("<!--app-head-->", () => headTags);
+  html = html.replace("<!--app-html-->", () => `${rendered.html}<script>window.__RQ_STATE__=${JSON.stringify(rendered.state)}</script>`);
+  return html;
+}
 
 export async function injectOgTags(url: string, template: string, _requestOrigin: string): Promise<string> {
   // Never let preview or internal deployment hosts leak into public share cards.
@@ -198,6 +214,12 @@ export async function injectOgTags(url: string, template: string, _requestOrigin
           `<meta name="description" content="${description}" />`,
         );
       }
+      if (title && !/<title[\s>]/i.test(template)) {
+        template = template.replace("</head>", `    <title>${title}</title>\n  </head>`);
+      }
+      if (description && !/<meta name="description"/i.test(template)) {
+        template = template.replace("</head>", `    <meta name="description" content="${description}" />\n  </head>`);
+      }
     }
     template = template.replace(/<meta property="og:[^"]*" content="[^"]*"\s*\/>\s*\n?/g, "");
     template = template.replace(/<meta name="twitter:[^"]*" content="[^"]*"\s*\/>\s*\n?/g, "");
@@ -258,13 +280,15 @@ export async function setupVite(app: Express, server: Server) {
 
       const origin = `${req.protocol}://${req.get("host")}`;
       template = await injectOgTags(url, template, origin);
-
-      const page = await vite.transformIndexHtml(url, template);
+      const caller = await buildSsrPrefetch(req, res);
+      const entry = await vite.ssrLoadModule("/src/entry-server.tsx");
+      const rendered = await entry.render(url, (queryClient: any) => import("../../client/src/ssr/prefetch").then(({ prefetchForPath }) => prefetchForPath(url, queryClient, caller)));
+      const page = composeSsrHtml(await vite.transformIndexHtml(url, template), rendered, origin);
       if (url.includes("handoff=")) {
         res.set("Cache-Control", "private, no-store");
         res.set("Referrer-Policy", "no-referrer");
       }
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      res.status(rendered.head.notFound ? 404 : 200).set({ "Content-Type": "text/html", "Cache-Control": "no-cache" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);
@@ -285,7 +309,7 @@ export function serveStatic(app: Express) {
 
   // The homepage must reach the HTML handler below so crawler-visible OG and
   // JSON-LD are injected. Keep assets and Google verification files static.
-  app.use(express.static(distPath, { index: false }));
+  app.use(express.static(distPath, { index: false, redirect: false }));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", async (req, res) => {
@@ -295,10 +319,17 @@ export function serveStatic(app: Express) {
 
     let html = fs.readFileSync(indexPath, "utf-8");
     html = await injectOgTags(url, html, origin);
+    try {
+      const caller = await buildSsrPrefetch(req, res);
+      const entry = await import(pathToFileURL(path.join(import.meta.dirname, "server-ssr", "entry-server.js")).href);
+      const rendered = await entry.render(url, (queryClient: any) => import("../../client/src/ssr/prefetch").then(({ prefetchForPath }) => prefetchForPath(url, queryClient, caller)));
+      html = composeSsrHtml(html, rendered, origin);
+      if (rendered.head.notFound) res.status(404);
+    } catch (error) { console.error("[SSR] render failed", error); }
     if (url.includes("handoff=")) {
       res.set("Cache-Control", "private, no-store");
       res.set("Referrer-Policy", "no-referrer");
     }
-    res.status(200).set({ "Content-Type": "text/html" }).end(html);
+    res.set({ "Content-Type": "text/html", "Cache-Control": "no-cache" }).end(html);
   });
 }

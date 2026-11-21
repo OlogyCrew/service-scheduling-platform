@@ -8,6 +8,7 @@ import { NavHeader } from "@/components/shared/NavHeader";
 import { OfficialBadge } from "@/components/OfficialBadge";
 import { SaveProviderButton } from "@/components/SaveProviderButton";
 import { CATEGORY_ICONS } from "@/lib/categoryIcons";
+import { DirectoryBreadcrumbs } from "@/components/shared/DirectoryBreadcrumbs";
 import "./CategoryDetail.css";
 
 function formatCurrency(value: string | number | null | undefined): string {
@@ -164,6 +165,7 @@ export default function CategoryDetail() {
     <div className="ology-category-page">
       <NavHeader />
       <main id="category-main">
+        {category && <DirectoryBreadcrumbs items={[{ label: "Home", href: "/" }, { label: "Browse", href: "/browse" }, { label: category.name }]} />}
         {!category ? (
           <section className="ology-category-state" role={categoryError ? "alert" : "status"}>
             {categoryLoading ? (

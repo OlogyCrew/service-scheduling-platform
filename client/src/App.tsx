@@ -240,7 +240,7 @@ function Router() {
 function AppContent() {
   const [location] = useLocation();
   const { loading: authLoading } = useAuth();
-  const [showContent, setShowContent] = useState(false);
+  const [showContent, setShowContent] = useState(true);
 
   // Wait for auth to resolve before showing any page content
   // This prevents the flash of wrong content (e.g., public homepage before dashboard)

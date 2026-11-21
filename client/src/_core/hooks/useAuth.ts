@@ -10,13 +10,14 @@ type UseAuthOptions = {
 };
 
 export function useAuth(options?: UseAuthOptions) {
-  const { redirectOnUnauthenticated = false, redirectPath = getLoginUrl() } =
+  const { redirectOnUnauthenticated = false, redirectPath = (typeof window === "undefined" ? "/login" : getLoginUrl()) } =
     options ?? {};
   const utils = trpc.useUtils();
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
+    enabled: typeof window !== "undefined",
   });
 
   const logoutMutation = trpc.auth.logout.useMutation({
@@ -42,16 +43,13 @@ export function useAuth(options?: UseAuthOptions) {
     }
     // Always clear all client-side state regardless of server response
     utils.auth.me.setData(undefined, null);
-    localStorage.removeItem("manus-runtime-user-info");
+    if (typeof window !== "undefined") localStorage.removeItem("manus-runtime-user-info");
     // Clear ALL query caches to prevent any stale data
     queryClient.clear();
   }, [logoutMutation, utils, queryClient]);
 
   const state = useMemo(() => {
-    localStorage.setItem(
-      "manus-runtime-user-info",
-      JSON.stringify(meQuery.data)
-    );
+    if (typeof window !== "undefined") localStorage.setItem("manus-runtime-user-info", JSON.stringify(meQuery.data));
     return {
       user: meQuery.data ?? null,
       loading: meQuery.isLoading || logoutMutation.isPending,

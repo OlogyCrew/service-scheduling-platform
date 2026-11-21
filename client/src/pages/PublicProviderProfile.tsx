@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { NavHeader } from "@/components/shared/NavHeader";
+import { DirectoryBreadcrumbs } from "@/components/shared/DirectoryBreadcrumbs";
 import { useParams, Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { formatDuration } from "../../../shared/duration";
@@ -393,6 +394,12 @@ export default function PublicProviderProfile() {
   return (
     <div className={`ology-provider-profile min-h-screen bg-page${provider.isOfficial ? " ology-official-demo" : ""}`}>
       <NavHeader />
+      <DirectoryBreadcrumbs items={[
+        { label: "Home", href: "/" },
+        { label: "Browse", href: "/browse" },
+        ...(categories?.[0] ? [{ label: categories[0].name, href: categories[0].slug ? `/category/${categories[0].slug}` : undefined }] : []),
+        { label: provider.businessName },
+      ]} />
 
       {/* Booking guidance is available on demand rather than interrupting first visits. */}
       <Dialog open={showDemoWelcome} onOpenChange={setShowDemoWelcome}>
