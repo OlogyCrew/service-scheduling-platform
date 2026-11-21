@@ -67,7 +67,7 @@ describe("provider My Subscription visual states", () => {
     const business = container.querySelector('[data-provider-plan="premium"]') as HTMLElement;
     const pro = container.querySelector('[data-provider-plan="basic"]') as HTMLElement;
     expect(business).toHaveAttribute("data-current-plan", "true");
-    expect(within(pro).getByRole("button", { name: "Downgrade" })).toBeEnabled();
+    expect(within(pro).getByRole("button", { name: "Downgrade" })).toBeDisabled();
     expect(within(business).getByRole("button", { name: "Current Plan" })).toBeDisabled();
     expect(screen.getByRole("link", { name: "Billing History" })).toHaveAttribute("href", "/provider/billing");
     expect(container.querySelector("a button, button a")).toBeNull();
@@ -97,16 +97,20 @@ describe("provider My Subscription visual states", () => {
     expect(screen.queryByRole("button", { name: "Monthly" })).not.toBeInTheDocument();
   });
 
-  it("opens pause and downgrade warnings without calling either mutation", () => {
+  it("keeps pause, billing, and downgrade controls disabled during Stripe review", () => {
     const { container } = render(React.createElement(SubscriptionManagement));
-    fireEvent.click(screen.getByRole("button", { name: "Pause Plan" }));
-    expect(screen.getByRole("dialog", { name: "Pause Your Subscription" })).toHaveClass("ology-provider-plan-dialog");
-    expect(screen.getByRole("button", { name: "30 days" })).toHaveAttribute("aria-pressed", "true");
+    const pauseButton = screen.getByRole("button", { name: "Pause Plan" });
+    const billingButton = screen.getByRole("button", { name: "Manage Billing" });
+    expect(pauseButton).toBeDisabled();
+    expect(billingButton).toBeDisabled();
+    fireEvent.click(pauseButton);
+    expect(screen.queryByRole("dialog", { name: "Pause Your Subscription" })).not.toBeInTheDocument();
     expect(mocks.pause).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     const pro = container.querySelector('[data-provider-plan="basic"]') as HTMLElement;
-    fireEvent.click(within(pro).getByRole("button", { name: "Downgrade" }));
-    expect(screen.getByRole("dialog", { name: "Confirm Downgrade" })).toHaveClass("ology-provider-plan-dialog");
+    const downgradeButton = within(pro).getByRole("button", { name: "Downgrade" });
+    expect(downgradeButton).toBeDisabled();
+    fireEvent.click(downgradeButton);
+    expect(screen.queryByRole("dialog", { name: "Confirm Downgrade" })).not.toBeInTheDocument();
     expect(mocks.downgrade).not.toHaveBeenCalled();
   });
 });
