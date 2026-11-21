@@ -120,8 +120,8 @@ import NotFound from "./pages/NotFound";
 
 // ─── Router ──────────────────────────────────────────────────────────────────
 function ProviderDashboardRoute() {
-  const [, setLocation] = useLocation();
-  const canonicalDestination = getCanonicalProviderDashboardDestination(window.location.search);
+  const [location, setLocation] = useLocation();
+  const canonicalDestination = getCanonicalProviderDashboardDestination(location.includes("?") ? location.slice(location.indexOf("?")) : "");
 
   useEffect(() => {
     if (canonicalDestination) {
@@ -134,13 +134,21 @@ function ProviderDashboardRoute() {
 }
 
 function LegacySearchRoute() {
-  const [, setLocation] = useLocation();
-  const destination = getCanonicalExploreDestination(window.location.search);
+  const [location, setLocation] = useLocation();
+  const destination = getCanonicalExploreDestination(location.includes("?") ? location.slice(location.indexOf("?")) : "");
 
   useEffect(() => {
     setLocation(destination, { replace: true });
   }, [destination, setLocation]);
 
+  return null;
+}
+
+function LegacyRedirect({ to }: { to: string }) {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    setLocation(to, { replace: true });
+  }, [setLocation, to]);
   return null;
 }
 
@@ -173,7 +181,7 @@ function Router() {
       <Route path="/provider/dashboard" component={ProviderDashboardRoute} />
       <Route path="/provider/customers/:contactId">{() => <ProviderOnlyGuard featureName="Customers"><ProviderCustomerDetail /></ProviderOnlyGuard>}</Route>
       <Route path="/provider/customers">{() => <ProviderOnlyGuard featureName="Customers"><ProviderCustomers /></ProviderOnlyGuard>}</Route>
-      <Route path="/provider/bookings">{() => { window.location.replace("/my-bookings"); return null; }}</Route>
+      <Route path="/provider/bookings">{() => <LegacyRedirect to="/my-bookings" />}</Route>
       <Route path="/provider/services">{() => <ProviderOnlyGuard featureName="Services"><ProviderServices /></ProviderOnlyGuard>}</Route>
       <Route path="/provider/analytics">{() => <ProviderOnlyGuard featureName="Analytics"><ProviderAnalyticsPage /></ProviderOnlyGuard>}</Route>
       <Route path="/provider/finances">{() => <ProviderOnlyGuard featureName="Finances"><ProviderFinances /></ProviderOnlyGuard>}</Route>
@@ -200,7 +208,7 @@ function Router() {
       <Route path="/my-reviews" component={CustomerReviews} />
       <Route path="/provider/reviews">{() => <ProviderOnlyGuard featureName="Reviews"><ProviderReviews /></ProviderOnlyGuard>}</Route>
       <Route path="/account" component={UserProfile} />
-      <Route path="/profile">{() => { window.location.replace("/account"); return null; }}</Route>
+      <Route path="/profile">{() => <LegacyRedirect to="/account" />}</Route>
       <Route path="/p/:slug" component={PublicProviderProfile} />
       <Route path="/provider/subscription">{() => <ProviderOnlyGuard featureName="Subscription Plans"><SubscriptionManagement /></ProviderOnlyGuard>}</Route>
       <Route path="/provider/onboarding">{() => <ProviderOnlyGuard featureName="Provider Profile Setup"><ProviderOnboarding /></ProviderOnlyGuard>}</Route>

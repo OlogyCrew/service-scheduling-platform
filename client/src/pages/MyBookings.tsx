@@ -91,10 +91,11 @@ function BookingsPageFrame({
 
 export default function MyBookings() {
   const { user, isAuthenticated, loading } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { canSwitch, isProviderView } = useViewMode();
+  const [hasMounted, setHasMounted] = useState(false);
   const bookingView = isProviderView ? "provider" : "customer";
-  const requestedBookingTab = new URLSearchParams(window.location.search).get("tab");
+  const requestedBookingTab = new URLSearchParams(location.split("?")[1] ?? "").get("tab");
   const defaultBookingTab = ["upcoming", "past", "drafts", "quotes"].includes(requestedBookingTab ?? "")
     ? requestedBookingTab!
     : "upcoming";
@@ -112,14 +113,16 @@ export default function MyBookings() {
   }, [bookingView]);
 
   // Hidden (deleted) bookings state — stored locally
-  const [hiddenBookingIds, setHiddenBookingIds] = useState<Set<number>>(() => {
+  const [hiddenBookingIds, setHiddenBookingIds] = useState<Set<number>>(() => new Set());
+
+  useEffect(() => {
     try {
       const stored = localStorage.getItem("hiddenBookingIds");
-      return stored ? new Set(JSON.parse(stored)) : new Set();
+      if (stored) setHiddenBookingIds(new Set(JSON.parse(stored)));
     } catch {
-      return new Set();
+      // Local preference storage is optional; the server booking list remains authoritative.
     }
-  });
+  }, []);
 
   // Confirm delete dialog
   const [deleteBookingId, setDeleteBookingId] = useState<number | null>(null);
@@ -140,6 +143,13 @@ export default function MyBookings() {
     bookingView === "customer" ? onlineBookings : receivedBookings,
     bookingView === "customer" ? isLoading : isLoadingReceived
   );
+
+  useEffect(() => setHasMounted(true), []);
+  useEffect(() => {
+    if (hasMounted && !loading && !isAuthenticated) {
+      window.location.href = getLoginUrl();
+    }
+  }, [hasMounted, loading, isAuthenticated]);
 
   // Filter out hidden bookings
   const bookings = useMemo(() => {
@@ -302,7 +312,7 @@ export default function MyBookings() {
     updateBookingStatus.mutate({ id: bookingId, status: "completed" });
   };
 
-  if (loading) {
+  if (!hasMounted || loading) {
     return (
       <div className="min-h-screen bg-page">
         <NavHeader />
@@ -314,7 +324,6 @@ export default function MyBookings() {
   }
 
   if (!isAuthenticated) {
-    window.location.href = getLoginUrl();
     return null;
   }
 

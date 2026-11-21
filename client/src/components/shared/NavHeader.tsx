@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 // getLoginUrl kept for backward compat if needed elsewhere
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
@@ -476,6 +477,16 @@ function UserMenuDropdown({ user }: { user: any }) {
   );
 }
 
+export function ProfileLoadingSkeleton() {
+  return (
+    <div className="flex items-center gap-2 px-2.5" aria-label="Loading your profile" role="status">
+      <Skeleton className="h-7 w-7 rounded-full" />
+      <Skeleton className="hidden h-3.5 w-20 sm:block" />
+      <span className="sr-only">Loading your profile</span>
+    </div>
+  );
+}
+
 // Mobile menu tile data - matches LoggedInHome.tsx landing page tiles exactly
 const MOBILE_PROVIDER_TILES = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/provider/dashboard", color: "bg-gray-100", iconColor: "text-gray-700" },
@@ -580,12 +591,15 @@ function MobileLogoutButton({ onClose }: { onClose: () => void }) {
 }
 
 export function NavHeader({ forcePublic = false }: { forcePublic?: boolean } = {}) {
-  const { user, isAuthenticated: accountAuthenticated } = useAuth();
+  const { user, loading: authLoading, isAuthenticated: accountAuthenticated } = useAuth();
   const isAuthenticated = accountAuthenticated && !forcePublic;
+  const [hasMounted, setHasMounted] = useState(false);
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileHeaderRef = useRef<HTMLElement>(null);
   const [mobileMenuTop, setMobileMenuTop] = useState(64);
+
+  useEffect(() => setHasMounted(true), []);
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -668,6 +682,8 @@ export function NavHeader({ forcePublic = false }: { forcePublic?: boolean } = {
                 {/* User menu dropdown */}
                 <UserMenuDropdown user={user} />
               </>
+            ) : hasMounted && authLoading && !forcePublic ? (
+              <ProfileLoadingSkeleton />
             ) : (
               <>
                 <Link href="/pricing">

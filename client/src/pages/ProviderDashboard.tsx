@@ -1438,6 +1438,9 @@ export default function ProviderDashboard(props: { initialTab?: string; hideChro
   const { user, isAuthenticated, loading } = useAuth();
   const [location, setLocation] = useLocation();
   const { isProviderView } = useViewMode();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => setHasMounted(true), []);
 
   // Redirect to My Bookings if user switches to customer view
   useEffect(() => {
@@ -1490,7 +1493,7 @@ export default function ProviderDashboard(props: { initialTab?: string; hideChro
   const [portfolioAfterUrl, setPortfolioAfterUrl] = useState("");
   const [activeTab, setActiveTab] = useState(() => {
     if (initialTab) return initialTab;
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.split("?")[1] ?? "");
     return params.get("tab") || "bookings";
   });
   const [showPackageDialog, setShowPackageDialog] = useState(false);
@@ -1551,6 +1554,18 @@ export default function ProviderDashboard(props: { initialTab?: string; hideChro
   const { data: provider } = trpc.provider.getMyProfile.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+
+  useEffect(() => {
+    if (hasMounted && !loading && !isAuthenticated) {
+      window.location.href = getLoginUrl();
+    }
+  }, [hasMounted, loading, isAuthenticated]);
+
+  useEffect(() => {
+    if (hasMounted && !loading && isAuthenticated && !provider) {
+      setLocation("/provider/onboarding");
+    }
+  }, [hasMounted, loading, isAuthenticated, provider, setLocation]);
   const { data: customersAccess } = trpc.customers.getAccess.useQuery(undefined, {
     enabled: isAuthenticated && Boolean(workspaceActive),
   });
@@ -1758,17 +1773,15 @@ export default function ProviderDashboard(props: { initialTab?: string; hideChro
     onError: (err) => toast.error(err.message),
   });
 
-  if (loading) {
+  if (!hasMounted || loading) {
     return <ProviderDashboardSkeleton />;
   }
 
   if (!isAuthenticated) {
-    window.location.href = getLoginUrl();
     return null;
   }
 
   if (!provider) {
-    setLocation("/provider/onboarding");
     return null;
   }
 

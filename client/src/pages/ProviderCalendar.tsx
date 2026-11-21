@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { formatPrice } from "@shared/formatPrice";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -122,7 +122,7 @@ const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export default function ProviderCalendar() {
   const { user, loading: authLoading } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>("month");
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => new Date(2000, 0, 1));
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showBlockDialog, setShowBlockDialog] = useState(false);
   const [blockForm, setBlockForm] = useState({
@@ -136,6 +136,10 @@ export default function ProviderCalendar() {
   const [copied, setCopied] = useState(false);
   const [showSyncPanel, setShowSyncPanel] = useState(false);
   const utils = trpc.useUtils();
+
+  useEffect(() => {
+    setCurrentDate(new Date());
+  }, []);
 
   const { data: calendarData, isLoading } = trpc.booking.calendarEvents.useQuery(undefined, {
     enabled: !!user,

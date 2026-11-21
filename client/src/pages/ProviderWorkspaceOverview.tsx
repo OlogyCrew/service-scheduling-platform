@@ -26,7 +26,7 @@ import {
   Store,
   Users,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import "./ProviderWorkspaceOverview.css";
@@ -84,13 +84,23 @@ export default function ProviderWorkspaceOverview() {
   const { user } = useAuth();
   const [shared, setShared] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
-  const [date] = useState(() => localDateKey());
-  const { data, isLoading, error } = trpc.providerOverview.get.useQuery({ localDate: date });
+  const [date, setDate] = useState<string | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+    setDate(localDateKey());
+  }, []);
+  const { data, isLoading, error } = trpc.providerOverview.get.useQuery(
+    { localDate: date ?? "2000-01-01" },
+    { enabled: date !== null },
+  );
   const { data: customersAccess } = trpc.customers.getAccess.useQuery();
   const firstName = user?.firstName || user?.name?.split(" ")[0] || "there";
   const todayLabel = useMemo(
-    () => new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(new Date()),
-    [],
+    () => hasMounted
+      ? new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(new Date())
+      : "Today",
+    [hasMounted],
   );
 
   async function sharePage() {
@@ -165,7 +175,7 @@ export default function ProviderWorkspaceOverview() {
                   <span className={`h-2 w-2 rounded-full ${data.provider.isPageLive ? "bg-emerald-400" : "bg-amber-400"}`} />
                   {data.provider.isPageLive ? "Your page is live and bookable" : "Your public page needs attention"}
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{greeting()}, {firstName}.</h1>
+                <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{hasMounted ? greeting() : "Welcome"}, {firstName}.</h1>
                 <p className="ology-provider-hero-copy mt-2 max-w-2xl text-sm sm:text-base">
                   {requestCount > 0 ? `You have ${requestCount} customer ${requestCount === 1 ? "request" : "requests"} to review` : "You’re caught up on customer requests"}
                   {data.today.length > 0 ? ` and ${data.today.length} ${data.today.length === 1 ? "service" : "services"} scheduled today.` : "."}
@@ -199,7 +209,7 @@ export default function ProviderWorkspaceOverview() {
                   return (
                     <Link key={item.id} href={item.href} data-tone={item.tone} className={`ology-provider-attention-item group flex items-center gap-3 rounded-2xl border p-3 text-left transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] sm:gap-4 sm:p-4 ${styles.wrap}`}>
                       <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${styles.icon}`}><Icon className="h-5 w-5" /></span>
-                      <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><span className="font-semibold text-slate-950">{item.title}</span><span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${styles.badge}`}>{relativeAge(item.timestamp)}</span></span><span className="mt-1 block text-sm text-slate-600">{item.detail}</span></span>
+                      <span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><span className="font-semibold text-slate-950">{item.title}</span><span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${styles.badge}`}>{hasMounted ? relativeAge(item.timestamp) : "Recent"}</span></span><span className="mt-1 block text-sm text-slate-600">{item.detail}</span></span>
                       <span className="ology-provider-attention-action hidden items-center gap-2 text-sm font-semibold sm:flex">{item.actionLabel}<ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
                       <ChevronRight className="h-5 w-5 shrink-0 text-slate-400 sm:hidden" />
                     </Link>

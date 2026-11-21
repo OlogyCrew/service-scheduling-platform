@@ -514,6 +514,12 @@ const faqItems: FAQItem[] = [
     category: "General",
   },
   {
+    question: "What does the Offline notice mean?",
+    answer:
+      "If your connection drops, OlogyCrew shows a small Offline notice at the bottom of the screen. Browsing and previously loaded information may remain available, but wait until your connection returns before submitting changes or booking actions. The notice disappears automatically when you reconnect.",
+    category: "General",
+  },
+  {
     question: "Can I offer services in multiple categories?",
     answer:
       "Yes! The number of categories you can offer depends on your subscription tier:\n\n• Starter (Free) — 1 service category\n• Pro ($12/mo) — Up to 5 categories\n• Business ($20/mo) — Unlimited categories\n\nFor example, a salon on the Pro plan could offer services under \"In-Salon Services\", \"Locks & Twist Hairstyles\", \"Mobile Salon\", and more. Upgrade anytime to unlock more categories from the Subscription Management page.",

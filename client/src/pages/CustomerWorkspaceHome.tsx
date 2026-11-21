@@ -30,7 +30,7 @@ import {
   Star,
   Users,
 } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -79,16 +79,27 @@ function firstName(name?: string | null, explicit?: string | null) {
 export default function CustomerWorkspaceHome() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [date] = useState(() => localDateKey());
+  const [date, setDate] = useState<string | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
   const [query, setQuery] = useState("");
-  const [searchLocation, setSearchLocation] = useState(() => [user?.billingCity, user?.billingState].filter(Boolean).join(", "));
+  const [searchLocation, setSearchLocation] = useState("");
   const [timing, setTiming] = useState("Any time");
-  const { data, isLoading, error } = trpc.customerHome.get.useQuery({ localDate: date });
+  const { data, isLoading, error } = trpc.customerHome.get.useQuery(
+    { localDate: date ?? "2000-01-01" },
+    { enabled: date !== null },
+  );
+
+  useEffect(() => {
+    setHasMounted(true);
+    setDate(localDateKey());
+    setSearchLocation([user?.billingCity, user?.billingState].filter(Boolean).join(", "));
+  }, [user?.billingCity, user?.billingState]);
 
   const greeting = useMemo(() => {
+    if (!hasMounted) return "Welcome";
     const hour = new Date().getHours();
     return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  }, []);
+  }, [hasMounted]);
 
   function beginSearch(event?: FormEvent, overrideQuery?: string) {
     event?.preventDefault();
