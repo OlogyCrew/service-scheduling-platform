@@ -31,6 +31,12 @@ export const stripeRouter = router({
       if (!booking) return { creditBalance: "0.00", applicableCredit: "0.00", finalAmount: "0.00", originalAmount: "0.00", coversFullAmount: false };
       if (booking.customerId !== ctx.user.id) return { creditBalance: "0.00", applicableCredit: "0.00", finalAmount: "0.00", originalAmount: "0.00", coversFullAmount: false };
 
+      // Offline obligations are settled only through the Pay-at-Location ledger.
+      // Do not expose referral-credit or online-checkout previews for them.
+      if (await db.getOfflinePaymentForBooking(booking.id)) {
+        return { creditBalance: "0.00", applicableCredit: "0.00", finalAmount: "0.00", originalAmount: "0.00", coversFullAmount: false };
+      }
+
       const service = await db.getServiceById(booking.serviceId);
       if (!service) return { creditBalance: "0.00", applicableCredit: "0.00", finalAmount: "0.00", originalAmount: "0.00", coversFullAmount: false };
 
@@ -62,6 +68,15 @@ export const stripeRouter = router({
       if (!booking) throw new Error("Booking not found");
       if (booking.customerId !== ctx.user.id) throw new Error("Unauthorized");
       assertPaymentActorCanInitiate(ctx.user, "booking");
+
+      // The offline ledger is authoritative for Pay-at-Location obligations.
+      // This guard must run before provider lookup, credits, velocity, or Stripe.
+      if (await db.getOfflinePaymentForBooking(booking.id)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This booking uses Pay at Location and cannot be paid online.",
+        });
+      }
 
       const service = await db.getServiceById(booking.serviceId);
       const provider = await db.getProviderById(booking.providerId);

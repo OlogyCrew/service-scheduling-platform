@@ -7,6 +7,7 @@ const stripeMocks = vi.hoisted(() => ({
 
 const dbMocks = vi.hoisted(() => ({
   getBookingById: vi.fn(),
+  getOfflinePaymentForBooking: vi.fn(),
   getPaymentByBookingId: vi.fn(),
   getServiceById: vi.fn(),
   getProviderById: vi.fn(),
@@ -74,6 +75,7 @@ describe("booking payment entitlement boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dbMocks.getBookingById.mockResolvedValue(booking);
+    dbMocks.getOfflinePaymentForBooking.mockResolvedValue(null);
     dbMocks.getPaymentByBookingId.mockResolvedValue(null);
     dbMocks.getServiceById.mockResolvedValue(service);
     dbMocks.getProviderById.mockResolvedValue({
