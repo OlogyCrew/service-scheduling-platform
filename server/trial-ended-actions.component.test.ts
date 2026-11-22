@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/", mocks.navigate],
+  Link: ({ href, children, ...props }: { href: string; children: React.ReactNode } & Record<string, unknown>) =>
+    createElement("a", { href, ...props }, children),
 }));
 
 vi.mock("sonner", () => ({
@@ -79,75 +81,59 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("trial-ended customer actions", () => {
-  it("opens the customer subscription plans from Subscribe", () => {
+  it("shows the paused-trials notice and a read-only subscription-record link", () => {
     render(createElement(CustomerTrialExpiredGate));
 
-    fireEvent.click(screen.getByRole("button", { name: "View customer subscription plans" }));
-
-    expect(mocks.navigate).toHaveBeenCalledWith("/customer/subscription");
+    expect(screen.getByRole("status")).toHaveTextContent("Your recorded trial has ended");
+    expect(screen.getByRole("link", { name: "View subscription record" })).toHaveAttribute("href", "/customer/subscription");
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(mocks.customerMutate).not.toHaveBeenCalled();
   });
 
-  it("continues with Individual, refreshes lifecycle state, and reports success", async () => {
+  it("does not offer customer self-downgrade while trials are paused", () => {
     const onDowngrade = vi.fn();
     render(createElement(CustomerTrialExpiredGate, { onDowngrade }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Continue with Individual plan" }));
-    expect(mocks.customerMutate).toHaveBeenCalledWith({ targetTier: "free" });
-
-    await act(async () => {
-      await mocks.customerOptions.onSuccess({ message: "You're continuing with the Individual plan." });
-    });
-
-    expect(mocks.customerGetSubscriptionInvalidate).toHaveBeenCalledTimes(1);
-    expect(mocks.customerTrialStatusInvalidate).toHaveBeenCalledTimes(1);
-    expect(mocks.toastSuccess).toHaveBeenCalledWith("You're continuing with the Individual plan.");
-    expect(onDowngrade).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(mocks.customerMutate).not.toHaveBeenCalled();
+    expect(onDowngrade).not.toHaveBeenCalled();
   });
 
-  it("shows a useful customer error and disables duplicate clicks while pending", () => {
-    mocks.customerPending = true;
+  it("preserves customer subscription state without mutation or lifecycle refresh", () => {
     render(createElement(CustomerTrialExpiredGate));
 
-    expect(screen.getByRole("button", { name: "Continue with Individual plan" })).toBeDisabled();
-    expect(screen.getByText("Downgrading...")).toBeVisible();
-    mocks.customerOptions.onError(new Error("Customer continuation failed"));
-    expect(mocks.toastError).toHaveBeenCalledWith("Customer continuation failed");
+    expect(mocks.customerGetSubscriptionInvalidate).not.toHaveBeenCalled();
+    expect(mocks.customerTrialStatusInvalidate).not.toHaveBeenCalled();
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
   });
 });
 
 describe("trial-ended provider actions", () => {
-  it("opens the provider subscription plans from Subscribe", () => {
+  it("shows the paused-trials notice and a read-only subscription-record link", () => {
     render(createElement(TrialExpiredGate));
 
-    fireEvent.click(screen.getByRole("button", { name: "View provider subscription plans" }));
-
-    expect(mocks.navigate).toHaveBeenCalledWith("/provider/subscription");
+    expect(screen.getByRole("status")).toHaveTextContent("Your recorded trial has ended");
+    expect(screen.getByRole("link", { name: "View subscription record" })).toHaveAttribute("href", "/provider/subscription");
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(mocks.providerMutate).not.toHaveBeenCalled();
   });
 
-  it("continues with Starter, refreshes lifecycle state, and reports success", async () => {
+  it("does not offer provider self-downgrade while trials are paused", () => {
     const onDowngrade = vi.fn();
     render(createElement(TrialExpiredGate, { onDowngrade }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Continue with Starter plan" }));
-    expect(mocks.providerMutate).toHaveBeenCalledWith({ targetTier: "free" });
-
-    await act(async () => {
-      await mocks.providerOptions.onSuccess({ message: "You're continuing with Starter (Free)." });
-    });
-
-    expect(mocks.providerSubscriptionInvalidate).toHaveBeenCalledTimes(1);
-    expect(mocks.providerTrialStatusInvalidate).toHaveBeenCalledTimes(1);
-    expect(mocks.toastSuccess).toHaveBeenCalledWith("You're continuing with Starter (Free).");
-    expect(onDowngrade).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(mocks.providerMutate).not.toHaveBeenCalled();
+    expect(onDowngrade).not.toHaveBeenCalled();
   });
 
-  it("shows a useful provider error and disables duplicate clicks while pending", () => {
-    mocks.providerPending = true;
+  it("preserves provider subscription state without mutation or lifecycle refresh", () => {
     render(createElement(TrialExpiredGate));
 
-    expect(screen.getByRole("button", { name: "Continue with Starter plan" })).toBeDisabled();
-    expect(screen.getByText("Downgrading...")).toBeVisible();
-    mocks.providerOptions.onError(new Error("Provider continuation failed"));
-    expect(mocks.toastError).toHaveBeenCalledWith("Provider continuation failed");
+    expect(mocks.providerSubscriptionInvalidate).not.toHaveBeenCalled();
+    expect(mocks.providerTrialStatusInvalidate).not.toHaveBeenCalled();
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastError).not.toHaveBeenCalled();
   });
 });
