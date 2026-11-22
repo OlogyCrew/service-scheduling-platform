@@ -505,6 +505,13 @@
       "when": 1794067953901,
       "tag": "0071_late_jigsaw",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "5",
+      "when": 1795381344230,
+      "tag": "0072_groovy_the_stranger",
+      "breakpoints": true
     }
   ]
 }

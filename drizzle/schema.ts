@@ -420,6 +420,42 @@ export const payments = mysqlTable("payments", {
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
 
+/**
+ * Durable cancellation claims. This table is intentionally additive and is
+ * not used by the live cancellation route until the retry/outbox flow is
+ * separately implemented and validated.
+ */
+export const bookingCancellationOperations = mysqlTable("booking_cancellation_operations", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("bookingId").notNull().references(() => bookings.id),
+  operationKey: varchar("operationKey", { length: 191 }).notNull().unique(),
+  requestedByUserId: int("requestedByUserId").notNull().references(() => users.id),
+  actorRole: mysqlEnum("actorRole", ["customer", "provider", "admin"]).notNull(),
+  reason: text("reason").notNull(),
+  bookingStatusAtClaim: varchar("bookingStatusAtClaim", { length: 20 }).notNull(),
+  paymentId: int("paymentId").references(() => payments.id),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 255 }),
+  refundAmount: decimal("refundAmount", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  refundPercentage: decimal("refundPercentage", { precision: 5, scale: 2 }).default("0.00").notNull(),
+  stripeRefundIdempotencyKey: varchar("stripeRefundIdempotencyKey", { length: 255 }),
+  status: mysqlEnum("status", ["claimed", "refund_pending", "refunded", "no_refund_required", "completed", "retryable", "failed"]).default("claimed").notNull(),
+  attemptCount: int("attemptCount").default(0).notNull(),
+  leaseToken: varchar("leaseToken", { length: 64 }).default("").notNull(),
+  lastAttemptAt: timestamp("lastAttemptAt"),
+  nextRetryAt: timestamp("nextRetryAt"),
+  lastError: text("lastError"),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  unique("booking_cancel_operation_booking_unique").on(table.bookingId),
+  index("booking_cancel_operation_status_retry_idx").on(table.status, table.nextRetryAt),
+  index("booking_cancel_operation_lease_idx").on(table.status, table.lastAttemptAt),
+  index("booking_cancel_operation_actor_idx").on(table.requestedByUserId, table.createdAt),
+]);
+export type BookingCancellationOperation = typeof bookingCancellationOperations.$inferSelect;
+export type InsertBookingCancellationOperation = typeof bookingCancellationOperations.$inferInsert;
+
 /** Atomic fixed-window counters for payment-abuse controls. */
 export const paymentVelocityCounters = mysqlTable("payment_velocity_counters", {
   id: int("id").autoincrement().primaryKey(),

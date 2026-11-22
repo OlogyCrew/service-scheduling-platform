@@ -162,6 +162,15 @@ export {
   clearProviderStripeSubscriptionReference,
 } from "./db/payments";
 
+// Cancellation operation claims are isolated until the approved refund-recovery
+// and notification-outbox flow is complete; the live route does not invoke them.
+export {
+  claimCancellationOperation,
+  claimCancellationOperationWithDatabase,
+  claimCancellationRetryWithDatabase,
+  cancellationOperationPolicy,
+} from "./db/bookingCancellationOperations";
+
 // Service packages
 export {
   createPackage,
