@@ -13,6 +13,11 @@ export function assertPlatformSubscriptionBillingOpen(): void {
   assertPaymentEligibilityOpen("platform_subscription");
 }
 
+/** Blocks Stripe Connect account/link mutations as a distinct operation category. */
+export function assertConnectOnboardingOpen(): void {
+  assertPaymentEligibilityOpen("connect_onboarding");
+}
+
 /** Blocks creation of new local provider trials without changing existing records. */
 export function assertProviderTrialStartOpen(): void {
   assertPaymentEligibilityOpen("provider_trial");
