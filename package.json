@@ -10,6 +10,7 @@
     "stripe:provider-status": "tsx scripts/stripe-provider-status.ts",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
+    "test:payment-review": "node scripts/run-payment-review-tests.mjs",
     "test": "vitest run",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
