@@ -62,7 +62,7 @@ export async function prefetchForPath(url: string, queryClient: QueryClient, cal
   }
 
   const providerMatch = path.match(/^(?:\/p\/|\/)([^/]+)$/);
-  if (providerMatch && !["browse", "experiences", "featured", "help", "privacy", "terms", "pricing", "platform", "for-providers"].includes(providerMatch[1])) {
+  if (providerMatch && !["login", "signup", "forgot-password", "reset-password", "verify-email", "verify-2fa", "select-role", "browse", "experiences", "featured", "help", "privacy", "terms", "pricing", "platform", "for-providers", "search", "category", "provider", "service", "booking", "bulk-booking", "monthly-planner", "my-bookings", "messages", "dm", "admin", "my-reviews", "profile", "account", "notifications", "notification-settings", "unsubscribe", "embed", "receipts", "referrals", "saved-providers", "my-quotes", "my-waitlist", "customer", "analytics", "referral-program", "404"].includes(providerMatch[1])) {
     const slug = decodeURIComponent(providerMatch[1]);
     try {
       const provider = await caller.provider.getBySlug({ slug });

@@ -18,11 +18,23 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const [browserLocation, setBrowserLocation] = useState<{
+    search: string;
+    hostname: string;
+    href: string;
+  } | null>(null);
+  useEffect(() => {
+    setBrowserLocation({
+      search: window.location.search,
+      hostname: window.location.hostname,
+      href: window.location.href,
+    });
+  }, []);
+  const urlParams = useMemo(() => new URLSearchParams(browserLocation?.search ?? ""), [browserLocation?.search]);
   const returnTo = normalizeAuthReturnPath(urlParams.get("returnTo"));
-  const isPreview = isUnpublishedPreviewHost(window.location.hostname);
+  const isPreview = isUnpublishedPreviewHost(browserLocation?.hostname ?? "");
   const isEmbeddedPreview = isPreview && isEmbeddedBrowserContext();
-  const previewLoginUrl = window.location.href;
+  const previewLoginUrl = browserLocation?.href ?? ologyCrewPublicUrl(appendAuthReturnPath("/login", returnTo));
   const publishedLoginUrl = ologyCrewPublicUrl(
     appendAuthReturnPath("/login", returnTo),
   );
