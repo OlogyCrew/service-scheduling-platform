@@ -168,6 +168,7 @@ export {
   claimCancellationOperation,
   claimCancellationOperationWithDatabase,
   claimCancellationRetryWithDatabase,
+  recordCancellationOperationOutcomeWithDatabase,
   cancellationOperationPolicy,
 } from "./db/bookingCancellationOperations";
 

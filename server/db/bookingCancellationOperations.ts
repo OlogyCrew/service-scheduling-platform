@@ -163,6 +163,50 @@ export async function claimCancellationRetryWithDatabase(database: DatabaseLike,
   return { action: "process" as const, operation: await readClaimedOperation(database, operationId) };
 }
 
+export type CancellationOperationOutcome =
+  | { kind: "refund_succeeded" }
+  | { kind: "no_refund_required" }
+  | { kind: "retryable_failure"; error: unknown; nextRetryAt?: Date }
+  | { kind: "permanent_failure"; error: unknown };
+
+function safeErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/(sk|rk|whsec|Bearer)_[A-Za-z0-9_\-]+/gi, "[redacted]").slice(0, 1000);
+}
+
+/**
+ * Records only the durable outcome of an already-claimed operation. The lease
+ * token prevents a stale worker from overwriting a newer retry. Payment,
+ * booking, Stripe, and notification side effects are intentionally outside
+ * this helper and must be coordinated by a separately approved route flow.
+ */
+export async function recordCancellationOperationOutcomeWithDatabase(
+  database: DatabaseLike,
+  input: { operationId: number; leaseToken: string; outcome: CancellationOperationOutcome; now?: Date },
+) {
+  const now = input.now ?? new Date();
+  const set = input.outcome.kind === "refund_succeeded"
+    ? { status: "refunded" as const, completedAt: now, nextRetryAt: null, lastError: null }
+    : input.outcome.kind === "no_refund_required"
+      ? { status: "completed" as const, completedAt: now, nextRetryAt: null, lastError: null }
+      : input.outcome.kind === "retryable_failure"
+        ? { status: "retryable" as const, nextRetryAt: input.outcome.nextRetryAt ?? new Date(now.getTime() + 60_000), lastError: safeErrorMessage(input.outcome.error) }
+        : { status: "failed" as const, lastError: safeErrorMessage(input.outcome.error) };
+
+  const updated = await database.transaction(async (tx: DatabaseLike) => tx.update(bookingCancellationOperations)
+    .set(set)
+    .where(and(
+      eq(bookingCancellationOperations.id, input.operationId),
+      eq(bookingCancellationOperations.leaseToken, input.leaseToken),
+      or(eq(bookingCancellationOperations.status, "claimed"), eq(bookingCancellationOperations.status, "refund_pending")),
+    )));
+
+  if (!((updated as any)[0]?.affectedRows ?? 0)) {
+    throw new Error("Cancellation operation lease is stale or already resolved");
+  }
+  return readClaimedOperation(database, input.operationId);
+}
+
 export const cancellationOperationPolicy = {
   claimLeaseMs: CLAIM_LEASE_MS,
   cancellableBookingStatuses: Array.from(CANCELLABLE_BOOKING_STATUSES),

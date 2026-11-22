@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   claimCancellationOperationWithDatabase,
   claimCancellationRetryWithDatabase,
+  recordCancellationOperationOutcomeWithDatabase,
   type CancellationOperationClaimInput,
 } from "./db/bookingCancellationOperations";
 
@@ -61,8 +62,13 @@ function fakeDatabase(options: { bookingStatus?: string; failInsert?: boolean } 
     update: () => ({
       set: (values: any) => ({
         where: async () => {
-          if (!operation || operation.status !== "retryable") return [{ affectedRows: 0 }];
-          operation = { ...operation, ...values, status: "refund_pending" };
+          if (!operation) return [{ affectedRows: 0 }];
+          if (operation.status === "retryable") {
+            operation = { ...operation, ...values, status: "refund_pending" };
+            return [{ affectedRows: 1 }];
+          }
+          if (operation.status !== "claimed" && operation.status !== "refund_pending") return [{ affectedRows: 0 }];
+          operation = { ...operation, ...values };
           return [{ affectedRows: 1 }];
         },
       }),
@@ -108,5 +114,57 @@ describe("isolated cancellation-operation claims", () => {
     const retry = await claimCancellationRetryWithDatabase(database, 1);
     expect(retry.action).toBe("process");
     expect(retry.operation.stripeRefundIdempotencyKey).toBe("cancel-booking-77-refund");
+  });
+
+  it("records a Stripe timeout as retryable and then reclaims it with the same idempotency key", async () => {
+    const database = fakeDatabase();
+    const claimed = await claimCancellationOperationWithDatabase(database, input());
+    if (claimed.action !== "process") throw new Error("expected claim winner");
+    const retryable = await recordCancellationOperationOutcomeWithDatabase(database, {
+      operationId: claimed.operation.id,
+      leaseToken: claimed.operation.leaseToken,
+      outcome: { kind: "retryable_failure", error: new Error("Stripe timeout") },
+    });
+    expect(retryable.status).toBe("retryable");
+    expect(retryable.lastError).toContain("Stripe timeout");
+    database.forceRetryable();
+    const retry = await claimCancellationRetryWithDatabase(database, claimed.operation.id);
+    expect(retry.action).toBe("process");
+    expect(retry.operation.stripeRefundIdempotencyKey).toBe("cancel-booking-77-refund");
+  });
+
+  it("completes zero-refund/offline outcomes without Stripe or payment calls", async () => {
+    const database = fakeDatabase();
+    const claimed = await claimCancellationOperationWithDatabase(database, input({
+      paymentId: null,
+      stripePaymentIntentId: null,
+      refundAmount: "0.00",
+      refundPercentage: "0.00",
+      stripeRefundIdempotencyKey: null,
+    }));
+    if (claimed.action !== "process") throw new Error("expected claim winner");
+    const completed = await recordCancellationOperationOutcomeWithDatabase(database, {
+      operationId: claimed.operation.id,
+      leaseToken: claimed.operation.leaseToken,
+      outcome: { kind: "no_refund_required" },
+    });
+    expect(completed.status).toBe("completed");
+    expect(database.calls).toEqual({ stripe: 0, payments: 0, bookings: 0, notifications: 0 });
+  });
+
+  it("rejects a stale worker after the operation has already resolved", async () => {
+    const database = fakeDatabase();
+    const claimed = await claimCancellationOperationWithDatabase(database, input());
+    if (claimed.action !== "process") throw new Error("expected claim winner");
+    await recordCancellationOperationOutcomeWithDatabase(database, {
+      operationId: claimed.operation.id,
+      leaseToken: claimed.operation.leaseToken,
+      outcome: { kind: "refund_succeeded" },
+    });
+    await expect(recordCancellationOperationOutcomeWithDatabase(database, {
+      operationId: claimed.operation.id,
+      leaseToken: claimed.operation.leaseToken,
+      outcome: { kind: "permanent_failure", error: "late worker" },
+    })).rejects.toThrow("stale or already resolved");
   });
 });
