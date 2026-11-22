@@ -111,6 +111,12 @@ export async function injectOgTags(url: string, template: string, _requestOrigin
     );
     template = template.replace(/<title>[^<]*<\/title>/, "<title>The OlogyCrew Platform | Services, Bookings & Business Tools</title>");
     template = template.replace(/<meta name="description" content="[^"]*"\s*\/>/, '<meta name="description" content="Discover how OlogyCrew connects service discovery, direct bookings or quotes, and provider business tools on one platform." />');
+    if (!/<title[\s>]/i.test(template)) {
+      template = template.replace("</head>", "<title>The OlogyCrew Platform | Services, Bookings & Business Tools</title>\n  </head>");
+    }
+    if (!/<meta name="description"/i.test(template)) {
+      template = template.replace("</head>", '<meta name="description" content="Discover how OlogyCrew connects service discovery, direct bookings or quotes, and provider business tools on one platform." />\n  </head>');
+    }
     primaryMetadataWasExplicitlySet = true;
   }
 
@@ -284,11 +290,12 @@ export async function setupVite(app: Express, server: Server) {
       const entry = await vite.ssrLoadModule("/src/entry-server.tsx");
       const rendered = await entry.render(url, (queryClient: any) => import("../../client/src/ssr/prefetch").then(({ prefetchForPath }) => prefetchForPath(url, queryClient, caller)));
       const page = composeSsrHtml(await vite.transformIndexHtml(url, template), rendered, origin);
-      if (url.includes("handoff=")) {
-        res.set("Cache-Control", "private, no-store");
-        res.set("Referrer-Policy", "no-referrer");
-      }
-      res.status(rendered.head.notFound ? 404 : 200).set({ "Content-Type": "text/html", "Cache-Control": "no-cache" }).end(page);
+      const privateHandoff = url.includes("handoff=");
+      res.status(rendered.head.notFound ? 404 : 200).set({
+        "Content-Type": "text/html",
+        "Cache-Control": privateHandoff ? "private, no-store" : "no-cache",
+        ...(privateHandoff ? { "Referrer-Policy": "no-referrer" } : {}),
+      }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);
@@ -326,10 +333,11 @@ export function serveStatic(app: Express) {
       html = composeSsrHtml(html, rendered, origin);
       if (rendered.head.notFound) res.status(404);
     } catch (error) { console.error("[SSR] render failed", error); }
-    if (url.includes("handoff=")) {
-      res.set("Cache-Control", "private, no-store");
-      res.set("Referrer-Policy", "no-referrer");
-    }
-    res.set({ "Content-Type": "text/html", "Cache-Control": "no-cache" }).end(html);
+    const privateHandoff = url.includes("handoff=");
+    res.set({
+      "Content-Type": "text/html",
+      "Cache-Control": privateHandoff ? "private, no-store" : "no-cache",
+      ...(privateHandoff ? { "Referrer-Policy": "no-referrer" } : {}),
+    }).end(html);
   });
 }

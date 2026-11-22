@@ -39,18 +39,18 @@ describe("clean-account plan selection persistence", () => {
     expect(customerHome).toContain("clearPendingPlan.mutate()");
   });
 
-  it("restores a selected provider plan from the database on another device and activates it after profile creation", () => {
+  it("restores a selected provider plan from the database without auto-activating paid access", () => {
     expect(providerOnboarding).toContain("pendingPlanTier");
     expect(providerOnboarding).toContain("pendingPlanAudience");
     expect(providerOnboarding).toContain("Fallback: read from user's pendingPlanTier in DB");
-    expect(providerOnboarding).toContain("await selectFreeTier.mutateAsync()");
-    expect(providerOnboarding).toContain("await startTrial.mutateAsync({ tier: plan.tier })");
-    expect(providerOnboarding).toContain("await utils.client.auth.clearPendingPlan.mutate()");
+    expect(providerOnboarding).toContain("selectFreeTier.mutate()");
+    expect(providerOnboarding).toContain("startTrial.mutate({ tier: \"basic\" })");
+    expect(providerOnboarding).toContain("New provider trials are paused");
   });
 
   it("does not activate a provider plan until the provider profile exists", () => {
     const profileCreate = providerOnboarding.indexOf("await createProvider.mutateAsync");
-    const planActivation = providerOnboarding.indexOf("Auto-activate plan from localStorage after profile is created");
+    const planActivation = providerOnboarding.indexOf("No provider profile yet - advance without automatic plan activation");
     expect(profileCreate).toBeGreaterThan(-1);
     expect(planActivation).toBeGreaterThan(profileCreate);
   });

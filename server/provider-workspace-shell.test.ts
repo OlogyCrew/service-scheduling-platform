@@ -63,7 +63,7 @@ describe("shared Provider Workspace visual system", () => {
   });
 
   it("keeps the large greeting unique to Overview and gives subpages compact headers", () => {
-    expect(overviewSource).toContain("{greeting()}, {firstName}.");
+    expect(overviewSource).toContain('{hasMounted ? greeting() : "Welcome"}, {firstName}.');
     expect(bookingsSource).not.toContain("greeting()");
     expect(dashboardSource).not.toContain("greeting()");
     expect(bookingsSource).toContain('title="Bookings"');

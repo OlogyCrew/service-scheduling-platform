@@ -65,7 +65,7 @@ describe("standalone provider Business Tools page", () => {
 
   it("redirects every supported legacy dashboard tab to its canonical page", () => {
     expect(appSource).toContain("function ProviderDashboardRoute()");
-    expect(appSource).toContain("getCanonicalProviderDashboardDestination(window.location.search)");
+    expect(appSource).toContain("getCanonicalProviderDashboardDestination(location.includes(\"?\") ? location.slice(location.indexOf(\"?\")) : \"\")");
     for (const [tab, destination] of Object.entries({
       bookings: "/my-bookings",
       quotes: "/my-bookings?tab=quotes",

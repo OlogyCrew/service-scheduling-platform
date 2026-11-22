@@ -71,9 +71,8 @@ describe("reconciled plan claims and paid-feature surfaces", () => {
   const serviceSearch = read("server/db/services.ts");
 
   it("does not present Starter as a Stripe payment or transaction-fee plan", () => {
-    for (const source of [providerPlans, publicPlans]) {
-      expect(source).toContain('{ text: "1% transaction fee on OlogyCrew payments", included: false }');
-    }
+    expect(providerPlans).toContain('{ text: "1% transaction fee on OlogyCrew payments", included: false }');
+    expect(publicPlans).toContain('PROVIDER_PAYMENTS_PAUSED ? "1% transaction fee — payment collection unavailable during review" : "1% transaction fee on OlogyCrew payments"');
     expect(providerPlans).not.toContain("All plans include a low 1% transaction fee");
   });
 
