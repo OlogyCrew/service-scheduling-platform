@@ -9,6 +9,7 @@ import { getProviderByUserId } from "./db/providers";
 import { getServiceById } from "./db/services";
 import { assertProviderPaymentActor } from "./paymentAuthorization";
 import { assertPaymentVelocityAllowed, throwIfPaymentVelocityBlocked } from "./paymentVelocity";
+import { assertPaymentEligibilityOpen } from "./paymentEligibility";
 
 const stripe = new Stripe(ENV.stripeSecretKey, { apiVersion: "2025-04-30.basil" as any });
 
@@ -102,6 +103,7 @@ Be specific, action-oriented, and highlight what makes this service special. Do 
       origin: z.string(),
     }))
     .mutation(async ({ ctx, input }) => {
+      assertPaymentEligibilityOpen("promotion_collection");
       const provider = await getProviderByUserId(ctx.user.id);
       if (!provider) throw new TRPCError({ code: "FORBIDDEN", message: "Provider account required" });
       assertProviderPaymentActor(ctx.user, provider);
