@@ -613,6 +613,8 @@ export const bookingRouter = router({
             payment_intent: payment.stripePaymentIntentId,
             amount: Math.round(parseFloat(refundAmount) * 100),
             reason: "requested_by_customer",
+          }, {
+            idempotencyKey: `ologycrew-refund-booking-${booking.id}-payment-${payment.id}-${Math.round(parseFloat(refundAmount) * 100)}`,
           });
           stripeRefundId = refund.id;
 

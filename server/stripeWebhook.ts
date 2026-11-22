@@ -38,7 +38,7 @@ function getStripeObjectId(value: unknown): string | null {
   return null;
 }
 
-function getWebhookLedgerInput(event: Stripe.Event) {
+export function getWebhookLedgerInput(event: Stripe.Event) {
   const object = event.data.object as any;
   const metadata = object?.metadata && typeof object.metadata === "object" ? object.metadata : {};
   const parsedBookingId = Number(metadata.bookingId);

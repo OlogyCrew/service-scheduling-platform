@@ -4,6 +4,7 @@ import {
   stripeWebhookLedgerPolicy,
 } from "./db/stripeWebhookEvents";
 import { resolveWebhookPaymentStatus } from "./db/payments";
+import { getWebhookLedgerInput } from "./stripeWebhook";
 
 const NOW = new Date("2026-11-07T08:00:00.000Z");
 
@@ -45,5 +46,50 @@ describe("Stripe webhook durable ledger contract", () => {
     expect(classifyExistingWebhookClaim(paymentState, new Date(NOW.getTime() + 1000))).toBe("duplicate");
     expect(resolveWebhookPaymentStatus("captured", "failed")).toBe("captured");
     expect(resolveWebhookPaymentStatus("refunded", "failed")).toBe("refunded");
+  });
+
+  it("keeps Stripe object identifiers and metadata scoped to the authentic event object", () => {
+    const input = getWebhookLedgerInput({
+      id: "evt_booking_1",
+      type: "payment_intent.succeeded",
+      livemode: false,
+      api_version: "2026-01-28.clover",
+      data: {
+        object: {
+          id: "pi_booking_1",
+          metadata: {
+            bookingId: "42",
+            type: "booking",
+            paymentType: "full",
+            providerId: "7",
+            userId: "9",
+            offlinePayment: "true",
+          },
+        },
+      },
+    } as any);
+
+    expect(input.paymentIntentId).toBe("pi_booking_1");
+    expect(input.bookingId).toBe(42);
+    expect(input.metadata).toEqual({
+      type: "booking",
+      paymentType: "full",
+      providerId: "7",
+      userId: "9",
+    });
+    // Offline-only markers are not promoted into Stripe payment state by the ledger contract.
+    expect(input.metadata).not.toHaveProperty("offlinePayment");
+  });
+
+  it("does not infer a booking scope from invalid or absent metadata", () => {
+    const input = getWebhookLedgerInput({
+      id: "evt_invoice_1",
+      type: "invoice.payment_succeeded",
+      livemode: false,
+      data: { object: { id: "in_1", metadata: { bookingId: "not-a-positive-integer" } } },
+    } as any);
+
+    expect(input.invoiceId).toBe("in_1");
+    expect(input.bookingId).toBeNull();
   });
 });

@@ -14,6 +14,11 @@ const PARTNER_SPLIT_PERCENTAGE = 40; // Partner gets 40%
 const PLATFORM_SPLIT_PERCENTAGE = 60; // Platform keeps 60%
 
 type TransferSourceType = "provider_subscription" | "customer_subscription" | "booking_platform_fee";
+const TRANSFER_SOURCE_TYPES: readonly TransferSourceType[] = [
+  "provider_subscription",
+  "customer_subscription",
+  "booking_platform_fee",
+];
 
 interface PartnerTransferInput {
   totalRevenue: number; // Total revenue in dollars
@@ -47,6 +52,14 @@ export async function executePartnerTransfer(input: PartnerTransferInput): Promi
   amount?: number;
   error?: string;
 }> {
+  // Keep the runtime boundary fail-closed as this helper can be reached by
+  // webhook/cron code and JavaScript callers are not constrained by the TS union.
+  // In particular, Pay-at-Location and unknown source types must never reach
+  // Stripe or create a partner-transfer ledger row.
+  if (!TRANSFER_SOURCE_TYPES.includes(input.sourceType)) {
+    return { success: false, error: "Unsupported transfer source type" };
+  }
+
   assertPaymentEligibilityOpen("transfer_or_partner_split");
   const partnerAccountId = ENV.partnerStripeAccountId;
 
