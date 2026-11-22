@@ -456,6 +456,39 @@ export const bookingCancellationOperations = mysqlTable("booking_cancellation_op
 export type BookingCancellationOperation = typeof bookingCancellationOperations.$inferSelect;
 export type InsertBookingCancellationOperation = typeof bookingCancellationOperations.$inferInsert;
 
+/**
+ * Durable, operation-scoped cancellation notification delivery claims. This
+ * remains unused by the live cancellation route until delivery and route
+ * integration receive separate validation and release approval.
+ */
+export const bookingCancellationNotificationOutbox = mysqlTable("booking_cancellation_notification_outbox", {
+  id: int("id").autoincrement().primaryKey(),
+  operationId: int("operationId").notNull().references(() => bookingCancellationOperations.id),
+  recipientUserId: int("recipientUserId").notNull().references(() => users.id),
+  eventName: varchar("eventName", { length: 64 }).notNull(),
+  idempotencyKey: varchar("idempotencyKey", { length: 191 }).notNull().unique(),
+  notificationType: varchar("notificationType", { length: 50 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  actionUrl: varchar("actionUrl", { length: 500 }),
+  bookingId: int("bookingId").notNull().references(() => bookings.id),
+  status: mysqlEnum("status", ["pending", "sending", "sent", "retryable", "failed"]).default("pending").notNull(),
+  attemptCount: int("attemptCount").default(0).notNull(),
+  leaseToken: varchar("leaseToken", { length: 64 }).default("").notNull(),
+  lastAttemptAt: timestamp("lastAttemptAt"),
+  nextRetryAt: timestamp("nextRetryAt"),
+  lastError: text("lastError"),
+  sentAt: timestamp("sentAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("cancel_notification_outbox_claim_idx").on(table.status, table.nextRetryAt, table.lastAttemptAt),
+  index("cancel_notification_outbox_operation_idx").on(table.operationId),
+  index("cancel_notification_outbox_recipient_idx").on(table.recipientUserId, table.createdAt),
+]);
+export type BookingCancellationNotificationOutbox = typeof bookingCancellationNotificationOutbox.$inferSelect;
+export type InsertBookingCancellationNotificationOutbox = typeof bookingCancellationNotificationOutbox.$inferInsert;
+
 /** Atomic fixed-window counters for payment-abuse controls. */
 export const paymentVelocityCounters = mysqlTable("payment_velocity_counters", {
   id: int("id").autoincrement().primaryKey(),

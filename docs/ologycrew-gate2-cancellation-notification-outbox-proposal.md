@@ -1,6 +1,6 @@
 # OlogyCrew Gate 2 — Cancellation Notification Outbox Proposal
 
-**Status:** Unpublished design proposal; no schema or runtime changes applied
+**Status:** Unpublished design plus generated migration candidate; no SQL or runtime changes applied
 **Scope:** Operation-scoped cancellation notifications only
 **Safety boundary:** The live cancellation route, existing notifications, Stripe, payments, bookings, and provider settings remain unchanged.
 
@@ -14,7 +14,7 @@ Add a separate `booking_cancellation_notification_outbox` table in a later, sepa
 
 The outbox worker must never call Stripe, update payment amounts, change booking status, or create a second cancellation operation. SSE remains best effort after the persisted notification; an SSE failure leaves the outbox row recoverable and does not cause a second notification row.
 
-## Exact candidate DDL — not generated or applied
+## Exact candidate DDL — generated as `drizzle/0073_striped_solo.sql`, not applied
 
 ```sql
 CREATE TABLE `booking_cancellation_notification_outbox` (
@@ -48,7 +48,7 @@ CREATE TABLE `booking_cancellation_notification_outbox` (
 );
 ```
 
-The candidate intentionally does not alter `notifications`, `bookings`, `payments`, or historical rows. It must not be generated or applied until the operation-table migration, hosted TiDB compatibility, notification retention, and delivery semantics are separately approved.
+The candidate intentionally does not alter `notifications`, `bookings`, `payments`, or historical rows. It must not be applied until the operation-table migration, hosted TiDB compatibility, notification retention, and delivery semantics are separately approved.
 
 ## Delivery protocol
 
@@ -80,4 +80,4 @@ The candidate intentionally does not alter `notifications`, `bookings`, `payment
 
 ## Release disposition
 
-This is an unpublished design proposal. It does not authorize a migration, notification schema change, worker, route integration, deployment, publication, provider activation, pilot selection, or production testing.
+This is an unpublished design and migration-review artifact. It does not authorize migration execution, a notification worker in production, route integration, deployment, publication, provider activation, pilot selection, or production testing.

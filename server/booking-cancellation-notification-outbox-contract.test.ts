@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const proposal = readFileSync("docs/ologycrew-gate2-cancellation-notification-outbox-proposal.md", "utf8");
 const guide = readFileSync("docs/ologycrew-provider-cancellation-recovery-guide-draft.md", "utf8");
 const schema = readFileSync("drizzle/schema.ts", "utf8");
+const migration = readFileSync("drizzle/0073_striped_solo.sql", "utf8");
 
 describe("cancellation notification outbox proposal", () => {
   it("defines operation-scoped uniqueness and lease/retry fields", () => {
@@ -21,11 +22,15 @@ describe("cancellation notification outbox proposal", () => {
     }
   });
 
-  it("does not silently alter the current notification schema or authorize a migration", () => {
-    expect(proposal).toContain("Exact candidate DDL — not generated or applied");
-    expect(proposal).toContain("does not authorize a migration");
+  it("contains only the approved additive outbox table and leaves existing notification data untouched", () => {
     expect(proposal).toContain("does not alter `notifications`, `bookings`, `payments`");
-    expect(schema).not.toContain("bookingCancellationNotificationOutbox");
+    expect(schema).toContain("bookingCancellationNotificationOutbox");
+    expect(migration).toContain("CREATE TABLE `booking_cancellation_notification_outbox`");
+    expect(migration).not.toMatch(/DROP\s+(TABLE|COLUMN|INDEX|FOREIGN KEY)/i);
+    expect(migration).not.toContain("ALTER TABLE `notifications`");
+    expect(migration).not.toContain("ALTER TABLE `bookings`");
+    expect(migration).not.toContain("ALTER TABLE `payments`");
+    expect(migration).toContain("booking_cancellation_notification_outbox_operationId_booking_cancellation_operations_id_fk");
   });
 
   it("keeps support wording honest about current versus future behavior", () => {

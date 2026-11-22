@@ -172,6 +172,16 @@ export {
   cancellationOperationPolicy,
 } from "./db/bookingCancellationOperations";
 
+export {
+  buildCancellationNotificationIdempotencyKey,
+  enqueueCancellationNotification,
+  enqueueCancellationNotificationWithDatabase,
+  claimCancellationNotificationWithDatabase,
+  markCancellationNotificationSentWithDatabase,
+  markCancellationNotificationRetryableWithDatabase,
+  cancellationNotificationOutboxPolicy,
+} from "./db/bookingCancellationNotifications";
+
 // Service packages
 export {
   createPackage,
