@@ -6,6 +6,7 @@ import * as db from "../db";
 import { COOKIE_NAME } from "@shared/const";
 import { ENV } from "../_core/env";
 import bcrypt from "bcryptjs";
+import { assertPaymentEligibilityOpen } from "../paymentEligibility";
 
 export const authRouter = router({
   me: publicProcedure.query(opts => {
@@ -105,6 +106,8 @@ export const authRouter = router({
           message: "You have active bookings (pending, confirmed, or in-progress). Please cancel or complete them before deleting your account.",
         });
       }
+
+      assertPaymentEligibilityOpen("account_cleanup");
 
       // Cancel Stripe subscriptions if any
       try {

@@ -4,6 +4,7 @@ import { z } from "zod";
 import * as db from "../db";
 import { createAuditEntry } from "../db/auditLog";
 import { OFFLINE_METHODS } from "../db/offlinePayments";
+import { assertPaymentEligibilityOpen } from "../paymentEligibility";
 
 const methodSchema = z.enum(OFFLINE_METHODS);
 
@@ -70,6 +71,7 @@ export const offlinePaymentRouter = router({
   confirmPayment: protectedProcedure
     .input(z.object({ bookingId: z.number().int().positive(), amountReceived: z.string(), offlinePaymentMethod: methodSchema, paymentNote: z.string().max(1000).nullable().optional() }))
     .mutation(async ({ ctx, input }) => {
+      assertPaymentEligibilityOpen("offline_pay_at_location");
       const booking = await assertBookingAccess(ctx.user, input.bookingId, true);
       try {
         const payment = await db.transitionOfflinePayment({ bookingId: input.bookingId, actorId: ctx.user.id, status: "paid", amount: input.amountReceived, method: input.offlinePaymentMethod, note: input.paymentNote, auditAction: "confirm_pay_at_location_payment", auditTargetType: "booking", auditTargetId: booking.id });
@@ -82,6 +84,7 @@ export const offlinePaymentRouter = router({
   waivePayment: protectedProcedure
     .input(z.object({ bookingId: z.number().int().positive(), waiverAmount: z.string(), waiverReason: z.string().trim().min(1).max(2000) }))
     .mutation(async ({ ctx, input }) => {
+      assertPaymentEligibilityOpen("offline_pay_at_location");
       const booking = await assertBookingAccess(ctx.user, input.bookingId, true);
       try {
         const payment = await db.transitionOfflinePayment({ bookingId: input.bookingId, actorId: ctx.user.id, status: "waived", amount: input.waiverAmount, reason: input.waiverReason, auditAction: "waive_pay_at_location_payment", auditTargetType: "booking", auditTargetId: booking.id });

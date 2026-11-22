@@ -6,7 +6,7 @@ import { getDb } from "./db/connection";
 import { customerSubscriptions } from "../drizzle/schema";
 import { providerSubscriptions } from "../drizzle/schema";
 import { eq, and, lte, isNotNull } from "drizzle-orm";
-import { ALL_TRIALS_PAUSED, PLATFORM_SUBSCRIPTIONS_PAUSED } from "../shared/providerPaymentPause";
+import { getPaymentEligibilityDecision } from "./paymentEligibility";
 
 /**
  * Scheduled handler: /api/scheduled/trial-expiry
@@ -24,7 +24,7 @@ export async function handleScheduledTrialExpiry(req: Request, res: Response) {
 
     // Do not acquire the DB, normalize records, or send conversion reminders
     // during review. Existing expiry dates and entitlement rules are preserved.
-    if (ALL_TRIALS_PAUSED || PLATFORM_SUBSCRIPTIONS_PAUSED) {
+    if (!getPaymentEligibilityDecision("customer_trial").allowed || !getPaymentEligibilityDecision("platform_subscription").allowed) {
       return res.json({
         ok: true, paused: true, customerTrialsExpired: 0,
         providerTrialsExpired: 0, notificationsSent: 0, errors: [],

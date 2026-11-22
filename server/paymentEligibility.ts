@@ -1,12 +1,15 @@
 import { TRPCError } from "@trpc/server";
 import {
   ALL_TRIALS_PAUSED,
+  ALL_TRIAL_PAUSE_MESSAGE,
+  PLATFORM_SUBSCRIPTION_PAUSE_POLICY_ID,
   PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE,
   PLATFORM_SUBSCRIPTIONS_PAUSED,
+  PROVIDER_PAYMENT_PAUSE_POLICY_ID,
   PROVIDER_PAYMENT_PAUSE_MESSAGE,
   PROVIDER_PAYMENTS_PAUSED,
+  PROVIDER_TRIAL_PAUSE_POLICY_ID,
   PROVIDER_TRIAL_PAUSE_MESSAGE,
-  PROVIDER_TRIALS_PAUSED,
 } from "../shared/providerPaymentPause";
 
 /**
@@ -26,7 +29,8 @@ export type PaymentEligibilityOperation =
   | "transfer_or_partner_split"
   | "webhook_reconciliation"
   | "connect_balance_read"
-  | "offline_pay_at_location";
+  | "offline_pay_at_location"
+  | "account_cleanup";
 
 export type PaymentEligibilityDecision = {
   allowed: boolean;
@@ -54,7 +58,7 @@ export function getPaymentEligibilityDecision(
       operation,
       reason: "platform_review",
       message: PROVIDER_PAYMENT_PAUSE_MESSAGE,
-      policyIds: ["provider-collection-pause-2026-11-20"],
+      policyIds: [PROVIDER_PAYMENT_PAUSE_POLICY_ID],
     };
   }
 
@@ -74,7 +78,7 @@ export function getPaymentEligibilityDecision(
       operation,
       reason: "platform_review",
       message: PLATFORM_SUBSCRIPTION_PAUSE_MESSAGE,
-      policyIds: ["platform-subscription-pause-2026-11-21"],
+      policyIds: [PLATFORM_SUBSCRIPTION_PAUSE_POLICY_ID],
     };
   }
 
@@ -83,8 +87,8 @@ export function getPaymentEligibilityDecision(
       allowed: false,
       operation,
       reason: "platform_review",
-      message: operation === "provider_trial" ? PROVIDER_TRIAL_PAUSE_MESSAGE : "New trials are temporarily unavailable while Stripe reviews OlogyCrew's account.",
-      policyIds: ["provider-trial-pause-2026-11-21"],
+      message: operation === "provider_trial" ? PROVIDER_TRIAL_PAUSE_MESSAGE : ALL_TRIAL_PAUSE_MESSAGE,
+      policyIds: [PROVIDER_TRIAL_PAUSE_POLICY_ID],
     };
   }
 

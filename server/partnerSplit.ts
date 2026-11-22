@@ -3,6 +3,7 @@ import { ENV } from "./_core/env";
 import { getDb } from "./db/connection";
 import { partnerTransfers, type PartnerTransfer } from "../drizzle/schema";
 import { desc, eq, sql, and, gte, lte } from "drizzle-orm";
+import { assertPaymentEligibilityOpen } from "./paymentEligibility";
 
 const stripe = new Stripe(ENV.stripeSecretKey, {
   apiVersion: "2026-01-28.clover",
@@ -46,6 +47,7 @@ export async function executePartnerTransfer(input: PartnerTransferInput): Promi
   amount?: number;
   error?: string;
 }> {
+  assertPaymentEligibilityOpen("transfer_or_partner_split");
   const partnerAccountId = ENV.partnerStripeAccountId;
 
   if (!partnerAccountId) {

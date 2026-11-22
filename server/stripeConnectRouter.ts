@@ -6,6 +6,7 @@ import * as db from "./db";
 import { TRPCError } from "@trpc/server";
 import { providerHasFeature } from "@shared/entitlements";
 import { assertPlatformSubscriptionBillingOpen } from "./providerPaymentPause";
+import { assertPaymentEligibilityOpen } from "./paymentEligibility";
 import { PLATFORM_SUBSCRIPTIONS_PAUSED, PROVIDER_PAYMENTS_PAUSED } from "../shared/providerPaymentPause";
 
 const stripe = new Stripe(ENV.stripeSecretKey!, {
@@ -278,6 +279,7 @@ export const stripeConnectRouter = router({
 
   // Get the provider's Stripe balance
   getBalance: protectedProcedure.query(async ({ ctx }) => {
+    assertPaymentEligibilityOpen("connect_balance_read");
     const provider = await db.getProviderByUserId(ctx.user.id);
     if (!provider?.stripeAccountId) {
       return { available: 0, pending: 0 };

@@ -7,6 +7,7 @@ import * as invoiceDb from "./db/invoices";
 import { sendNotification } from "./notifications";
 import { sendPushNotification } from "./notifications/pushHelper";
 import { executePartnerTransfer } from "./partnerSplit";
+import { assertPaymentEligibilityOpen } from "./paymentEligibility";
 import { generateInvoicePdf } from "./services/invoicePdf";
 import { getStripeSubscriptionPeriod, isStripeResourceMissing, mapStripeSubscriptionStatus } from "./stripeSubscriptionLifecycle";
 import { CUSTOMER_PLANS, PROVIDER_PLANS } from "../shared/entitlements";
@@ -119,6 +120,10 @@ export async function handleStripeWebhook(req: Request, res: Response) {
     console.error("[Stripe Webhook] Signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
+
+  // Authentic webhook reconciliation remains available during containment;
+  // this category is deliberately distinct from new collection.
+  assertPaymentEligibilityOpen("webhook_reconciliation");
 
   // Handle test events
   if (event.id.startsWith("evt_test_")) {

@@ -7,6 +7,7 @@ import { evaluateBookingWindow, OLOGYCREW_BOOKING_TIME_ZONE } from "@shared/book
 import { calculateBookingEndTime, CUSTOM_DURATION_CATEGORY_IDS, resolveAuthoritativeBookingInterval } from "@shared/bookingIntervals";
 import { BookingReservationConflictError } from "../db/bookings";
 import { queueCrmBookingProjection } from "../crm/sourceHooks";
+import { assertPaymentEligibilityOpen } from "../paymentEligibility";
 
 export const bookingRouter = router({
   create: protectedProcedure
@@ -603,6 +604,7 @@ export const bookingRouter = router({
       let stripeRefundId: string | undefined;
 
       if (payment?.stripePaymentIntentId && parseFloat(refundAmount) > 0) {
+        assertPaymentEligibilityOpen("refund_or_cancellation");
         try {
           const Stripe = (await import("stripe")).default;
           const { ENV } = await import("../_core/env");

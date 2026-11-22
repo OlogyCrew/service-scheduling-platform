@@ -93,6 +93,7 @@ describe("centralized payment eligibility", () => {
       "webhook_reconciliation",
       "connect_balance_read",
       "offline_pay_at_location",
+      "account_cleanup",
     ] as const) {
       expect(getPaymentEligibilityDecision(operation)).toMatchObject({
         operation,
