@@ -926,7 +926,7 @@ function BookingCard({
             </div>
             <div className="flex items-center gap-2">
               {getStatusBadge(booking.status)}
-              {!isProviderView && !isDemo && booking.status === "confirmed" && !(booking as any).paidAt && parseFloat(booking.totalAmount || "0") > 0 && (
+              {!isProviderView && !isDemo && booking.status === "confirmed" && !(booking as any).paidAt && !(booking as any).offlinePaymentStatus && parseFloat(booking.totalAmount || "0") > 0 && (
                 <Badge variant="outline" className="border-blue-300 text-blue-600 text-xs">Payment Due</Badge>
               )}
               {canDelete && onDelete && (
@@ -1045,7 +1045,7 @@ function BookingCard({
             )}
 
             {/* Customer Actions */}
-            {!isProviderView && booking.status === "confirmed" && !(booking as any).paidAt && parseFloat(booking.totalAmount || "0") > 0 && (
+            {!isProviderView && booking.status === "confirmed" && !(booking as any).paidAt && !(booking as any).offlinePaymentStatus && parseFloat(booking.totalAmount || "0") > 0 && (
               <Button 
                 variant="default" 
                 size="sm"

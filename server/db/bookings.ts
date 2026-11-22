@@ -12,6 +12,7 @@ import {
   promoRedemptions,
   referralCredits,
   quoteRequests,
+  offlineBookingPayments,
   type Booking,
 } from "../../drizzle/schema";
 import { getDb } from "./connection";
@@ -357,9 +358,19 @@ export async function getCustomerBookings(customerId: number, status?: string) {
   if (!db) return [];
   const conditions = [eq(bookings.customerId, customerId)];
   if (status && status !== "all") conditions.push(eq(bookings.status, status as any));
-  return await db.select().from(bookings)
+  return await db.select({
+    booking: bookings,
+    offlinePaymentStatus: offlineBookingPayments.status,
+    offlinePaymentMethod: offlineBookingPayments.offlinePaymentMethod,
+    offlineOriginalAmountDue: offlineBookingPayments.originalAmountDue,
+    offlineAmountReceived: offlineBookingPayments.amountReceived,
+    offlinePaidAt: offlineBookingPayments.paidAt,
+    offlineWaivedAt: offlineBookingPayments.waivedAt,
+  }).from(bookings)
+    .leftJoin(offlineBookingPayments, eq(offlineBookingPayments.bookingId, bookings.id))
     .where(and(...conditions))
-    .orderBy(desc(bookings.createdAt));
+    .orderBy(desc(bookings.createdAt))
+    .then(rows => rows.map(({ booking, ...offline }) => ({ ...booking, ...offline })));
 }
 
 export async function getProviderBookings(providerId: number, status?: string) {

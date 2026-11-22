@@ -6,6 +6,7 @@ const booking = read("server/routers/bookingRouter.ts");
 const provider = read("server/routers/providerRouter.ts");
 const offlineRouter = read("server/routers/offlinePaymentRouter.ts");
 const helper = read("server/db/offlinePayments.ts");
+const customerBookingsDb = read("server/db/bookings.ts");
 const schema = read("drizzle/schema.ts");
 const migration = read("drizzle/0071_late_jigsaw.sql");
 const serviceDetail = read("client/src/pages/ServiceDetail.tsx");
@@ -92,6 +93,14 @@ describe("Stage 4 Pay-at-Location preview contracts", () => {
     expect(migration).not.toMatch(/DROP\s+(TABLE|COLUMN|INDEX)/i);
     expect(migration).not.toContain("ALTER TABLE `bookings`");
     expect(migration).not.toContain("ALTER TABLE `payments`");
+  });
+
+  it("projects offline status into customer bookings and suppresses legacy online payment prompts", () => {
+    const customerList = section(customerBookingsDb, "export async function getCustomerBookings", "export async function getProviderBookings");
+    expect(customerList).toContain("offlinePaymentStatus: offlineBookingPayments.status");
+    expect(customerList).toContain("leftJoin(offlineBookingPayments");
+    expect(customerList).toContain("offlineOriginalAmountDue: offlineBookingPayments.originalAmountDue");
+    expect(customerQuotes).toContain("!(booking as any).offlinePaymentStatus");
   });
 
   it("passes migration identifier, FK, index, and additive-table review", () => {
