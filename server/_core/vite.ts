@@ -328,7 +328,10 @@ export function serveStatic(app: Express) {
     html = await injectOgTags(url, html, origin);
     try {
       const caller = await buildSsrPrefetch(req, res);
-      const entry = await import(pathToFileURL(path.join(import.meta.dirname, "server-ssr", "entry-server.js")).href);
+      const compiledSsrEntry = path.join(import.meta.dirname, "server-ssr", "entry-server.js");
+      const sourceSsrEntry = path.resolve(import.meta.dirname, "../..", "dist", "server-ssr", "entry-server.js");
+      const ssrEntry = fs.existsSync(compiledSsrEntry) ? compiledSsrEntry : sourceSsrEntry;
+      const entry = await import(pathToFileURL(ssrEntry).href);
       const rendered = await entry.render(url, (queryClient: any) => import("../../client/src/ssr/prefetch").then(({ prefetchForPath }) => prefetchForPath(url, queryClient, caller)));
       html = composeSsrHtml(html, rendered, origin);
       if (rendered.head.notFound) res.status(404);

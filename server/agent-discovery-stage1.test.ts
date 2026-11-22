@@ -164,8 +164,8 @@ describe("agent review boundary integration", () => {
     expect(servicePage).toContain("agentPreferredTimeApplied");
     expect(servicePage).toContain("availableSlots.some((slot) => slot.available && slot.time === agentHandoff.preferredTime)");
     expect(servicePage).toContain("Select the highlighted time to confirm and continue.");
-    expect(htmlServer).toContain('res.set("Cache-Control", "private, no-store")');
-    expect(htmlServer).toContain('res.set("Referrer-Policy", "no-referrer")');
+    expect(htmlServer).toContain('"Cache-Control": privateHandoff ? "private, no-store" : "no-cache"');
+    expect(htmlServer).toContain('"Referrer-Policy": "no-referrer"');
     expect(resolver).toContain(".mutation(async");
     expect(resolver).toContain("db.getUserById(provider.userId)");
     expect(resolver).toContain("db.getCategoryById(service.categoryId)");

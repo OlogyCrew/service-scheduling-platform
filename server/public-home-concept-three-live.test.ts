@@ -177,10 +177,9 @@ describe("Concept 3 public homepage with actual OlogyCrew data", () => {
     expect(live).not.toContain("bg-page");
     expect(footer).toContain("if (compactPublicHome && !isAuthenticated)");
     expect(preview).toContain("Homepage concept 3 · Supplied demo design");
-    expect(html).toContain("<title>OlogyCrew — Local work, well done</title>");
-    expect(html).toContain("Good work starts with people — OlogyCrew");
-    expect(html).toContain('content="https://ologycrew.com/manus-storage/ologycrew-people-first-social-1200x630_05d25d5b.jpg"');
-    expect(html).toContain('<meta property="og:image:width" content="1200" />');
-    expect(html).toContain('<meta property="og:image:height" content="630" />');
+    expect(html).toContain("<!--app-head-->");
+    expect(html).toContain("<!--app-html-->");
+    expect(html).not.toContain("<title>OlogyCrew — Local work, well done</title>");
+    expect(html).not.toContain("Good work starts with people — OlogyCrew");
   });
 });

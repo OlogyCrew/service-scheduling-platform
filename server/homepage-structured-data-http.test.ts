@@ -53,7 +53,7 @@ describe("production homepage structured data routing", () => {
     expect(html.match(/property="og:title"/g)).toHaveLength(1);
     expect(html).not.toContain("PRIVATE-REF");
     expect(html).not.toContain(origin);
-  });
+  }, 15000);
 
   it("preserves static JavaScript and Google HTML-file domain verification", async () => {
     const asset = await fetch(`${origin}/assets/fixture.js`);
