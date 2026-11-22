@@ -10,6 +10,7 @@ import {
   boolean,
   date,
   time,
+  foreignKey,
   index,
   unique,
   json
@@ -463,15 +464,15 @@ export type InsertBookingCancellationOperation = typeof bookingCancellationOpera
  */
 export const bookingCancellationNotificationOutbox = mysqlTable("booking_cancellation_notification_outbox", {
   id: int("id").autoincrement().primaryKey(),
-  operationId: int("operationId").notNull().references(() => bookingCancellationOperations.id),
-  recipientUserId: int("recipientUserId").notNull().references(() => users.id),
+  operationId: int("operationId").notNull(),
+  recipientUserId: int("recipientUserId").notNull(),
   eventName: varchar("eventName", { length: 64 }).notNull(),
   idempotencyKey: varchar("idempotencyKey", { length: 191 }).notNull().unique(),
   notificationType: varchar("notificationType", { length: 50 }).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),
   actionUrl: varchar("actionUrl", { length: 500 }),
-  bookingId: int("bookingId").notNull().references(() => bookings.id),
+  bookingId: int("bookingId").notNull(),
   status: mysqlEnum("status", ["pending", "sending", "sent", "retryable", "failed"]).default("pending").notNull(),
   attemptCount: int("attemptCount").default(0).notNull(),
   leaseToken: varchar("leaseToken", { length: 64 }).default("").notNull(),
@@ -482,6 +483,9 @@ export const bookingCancellationNotificationOutbox = mysqlTable("booking_cancell
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [
+  foreignKey({ name: "cancel_outbox_operation_fk", columns: [table.operationId], foreignColumns: [bookingCancellationOperations.id] }),
+  foreignKey({ name: "cancel_outbox_recipient_fk", columns: [table.recipientUserId], foreignColumns: [users.id] }),
+  foreignKey({ name: "cancel_outbox_booking_fk", columns: [table.bookingId], foreignColumns: [bookings.id] }),
   index("cancel_notification_outbox_claim_idx").on(table.status, table.nextRetryAt, table.lastAttemptAt),
   index("cancel_notification_outbox_operation_idx").on(table.operationId),
   index("cancel_notification_outbox_recipient_idx").on(table.recipientUserId, table.createdAt),

@@ -22,9 +22,9 @@ CREATE TABLE `booking_cancellation_notification_outbox` (
 	CONSTRAINT `booking_cancellation_notification_outbox_idempotencyKey_unique` UNIQUE(`idempotencyKey`)
 );
 --> statement-breakpoint
-ALTER TABLE `booking_cancellation_notification_outbox` ADD CONSTRAINT `booking_cancellation_notification_outbox_operationId_booking_cancellation_operations_id_fk` FOREIGN KEY (`operationId`) REFERENCES `booking_cancellation_operations`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `booking_cancellation_notification_outbox` ADD CONSTRAINT `booking_cancellation_notification_outbox_recipientUserId_users_id_fk` FOREIGN KEY (`recipientUserId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `booking_cancellation_notification_outbox` ADD CONSTRAINT `booking_cancellation_notification_outbox_bookingId_bookings_id_fk` FOREIGN KEY (`bookingId`) REFERENCES `bookings`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `booking_cancellation_notification_outbox` ADD CONSTRAINT `cancel_outbox_operation_fk` FOREIGN KEY (`operationId`) REFERENCES `booking_cancellation_operations`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `booking_cancellation_notification_outbox` ADD CONSTRAINT `cancel_outbox_recipient_fk` FOREIGN KEY (`recipientUserId`) REFERENCES `users`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `booking_cancellation_notification_outbox` ADD CONSTRAINT `cancel_outbox_booking_fk` FOREIGN KEY (`bookingId`) REFERENCES `bookings`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX `cancel_notification_outbox_claim_idx` ON `booking_cancellation_notification_outbox` (`status`,`nextRetryAt`,`lastAttemptAt`);--> statement-breakpoint
 CREATE INDEX `cancel_notification_outbox_operation_idx` ON `booking_cancellation_notification_outbox` (`operationId`);--> statement-breakpoint
 CREATE INDEX `cancel_notification_outbox_recipient_idx` ON `booking_cancellation_notification_outbox` (`recipientUserId`,`createdAt`);

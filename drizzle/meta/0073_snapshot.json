@@ -497,8 +497,8 @@
         }
       },
       "foreignKeys": {
-        "booking_cancellation_notification_outbox_operationId_booking_cancellation_operations_id_fk": {
-          "name": "booking_cancellation_notification_outbox_operationId_booking_cancellation_operations_id_fk",
+        "cancel_outbox_operation_fk": {
+          "name": "cancel_outbox_operation_fk",
           "tableFrom": "booking_cancellation_notification_outbox",
           "tableTo": "booking_cancellation_operations",
           "columnsFrom": [
@@ -510,8 +510,8 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "booking_cancellation_notification_outbox_recipientUserId_users_id_fk": {
-          "name": "booking_cancellation_notification_outbox_recipientUserId_users_id_fk",
+        "cancel_outbox_recipient_fk": {
+          "name": "cancel_outbox_recipient_fk",
           "tableFrom": "booking_cancellation_notification_outbox",
           "tableTo": "users",
           "columnsFrom": [
@@ -523,8 +523,8 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "booking_cancellation_notification_outbox_bookingId_bookings_id_fk": {
-          "name": "booking_cancellation_notification_outbox_bookingId_bookings_id_fk",
+        "cancel_outbox_booking_fk": {
+          "name": "cancel_outbox_booking_fk",
           "tableFrom": "booking_cancellation_notification_outbox",
           "tableTo": "bookings",
           "columnsFrom": [

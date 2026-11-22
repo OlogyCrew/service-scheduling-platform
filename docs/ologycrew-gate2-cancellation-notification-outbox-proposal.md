@@ -38,13 +38,13 @@ CREATE TABLE `booking_cancellation_notification_outbox` (
   `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `cancel_notification_outbox_key_unique` (`idempotencyKey`),
+  UNIQUE KEY `booking_cancellation_notification_outbox_idempotencyKey_unique` (`idempotencyKey`),
   KEY `cancel_notification_outbox_claim_idx` (`status`,`nextRetryAt`,`lastAttemptAt`),
   KEY `cancel_notification_outbox_operation_idx` (`operationId`),
   KEY `cancel_notification_outbox_recipient_idx` (`recipientUserId`,`createdAt`),
-  CONSTRAINT `cancel_notification_outbox_operation_fk` FOREIGN KEY (`operationId`) REFERENCES `booking_cancellation_operations` (`id`),
-  CONSTRAINT `cancel_notification_outbox_recipient_fk` FOREIGN KEY (`recipientUserId`) REFERENCES `users` (`id`),
-  CONSTRAINT `cancel_notification_outbox_booking_fk` FOREIGN KEY (`bookingId`) REFERENCES `bookings` (`id`)
+  CONSTRAINT `cancel_outbox_operation_fk` FOREIGN KEY (`operationId`) REFERENCES `booking_cancellation_operations` (`id`),
+  CONSTRAINT `cancel_outbox_recipient_fk` FOREIGN KEY (`recipientUserId`) REFERENCES `users` (`id`),
+  CONSTRAINT `cancel_outbox_booking_fk` FOREIGN KEY (`bookingId`) REFERENCES `bookings` (`id`)
 );
 ```
 

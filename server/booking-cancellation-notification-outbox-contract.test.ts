@@ -10,11 +10,11 @@ describe("cancellation notification outbox proposal", () => {
   it("defines operation-scoped uniqueness and lease/retry fields", () => {
     for (const fragment of [
       "booking_cancellation_notification_outbox",
-      "UNIQUE KEY `cancel_notification_outbox_key_unique` (`idempotencyKey`)",
+      "UNIQUE KEY `booking_cancellation_notification_outbox_idempotencyKey_unique` (`idempotencyKey`)",
       "KEY `cancel_notification_outbox_claim_idx` (`status`,`nextRetryAt`,`lastAttemptAt`)",
-      "cancel_notification_outbox_operation_fk",
-      "cancel_notification_outbox_recipient_fk",
-      "cancel_notification_outbox_booking_fk",
+      "cancel_outbox_operation_fk",
+      "cancel_outbox_recipient_fk",
+      "cancel_outbox_booking_fk",
       "SSE remains best effort after the persisted notification",
       "A stale worker cannot mark a newer lease sent",
     ]) {
@@ -30,7 +30,9 @@ describe("cancellation notification outbox proposal", () => {
     expect(migration).not.toContain("ALTER TABLE `notifications`");
     expect(migration).not.toContain("ALTER TABLE `bookings`");
     expect(migration).not.toContain("ALTER TABLE `payments`");
-    expect(migration).toContain("booking_cancellation_notification_outbox_operationId_booking_cancellation_operations_id_fk");
+    expect(migration).toContain("cancel_outbox_operation_fk");
+    expect(migration).toContain("cancel_outbox_recipient_fk");
+    expect(migration).toContain("cancel_outbox_booking_fk");
   });
 
   it("keeps support wording honest about current versus future behavior", () => {
