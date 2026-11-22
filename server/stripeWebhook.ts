@@ -30,6 +30,24 @@ export function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null
   return typeof subscription === "string" ? subscription : subscription.id;
 }
 
+export type StripeWebhookRoute =
+  | "checkout"
+  | "payment_intent"
+  | "refund"
+  | "subscription"
+  | "invoice"
+  | "ignored";
+
+/** Classify an authenticated Stripe event before dispatching its reconciliation handler. */
+export function classifyStripeWebhookRoute(eventType: string): StripeWebhookRoute {
+  if (eventType === "checkout.session.completed") return "checkout";
+  if (eventType === "payment_intent.succeeded" || eventType === "payment_intent.payment_failed") return "payment_intent";
+  if (eventType === "charge.refunded") return "refund";
+  if (eventType.startsWith("customer.subscription.")) return "subscription";
+  if (eventType === "invoice.payment_failed" || eventType === "invoice.payment_succeeded") return "invoice";
+  return "ignored";
+}
+
 function getStripeObjectId(value: unknown): string | null {
   if (typeof value === "string") return value;
   if (value && typeof value === "object" && "id" in value && typeof (value as any).id === "string") {
@@ -149,53 +167,46 @@ export async function handleStripeWebhook(req: Request, res: Response) {
   }
 
   try {
-    switch (event.type) {
-      case "checkout.session.completed": {
+    switch (classifyStripeWebhookRoute(event.type)) {
+      case "checkout": {
         const session = event.data.object as Stripe.Checkout.Session;
         await handleCheckoutCompleted(session);
         break;
       }
 
-      case "payment_intent.succeeded": {
+      case "payment_intent": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        await handlePaymentSucceeded(paymentIntent);
+        if (event.type === "payment_intent.succeeded") {
+          await handlePaymentSucceeded(paymentIntent);
+        } else {
+          await handlePaymentFailed(paymentIntent);
+        }
         break;
       }
 
-      case "payment_intent.payment_failed": {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        await handlePaymentFailed(paymentIntent);
-        break;
-      }
-
-      case "charge.refunded": {
+      case "refund": {
         const charge = event.data.object as Stripe.Charge;
         await handleRefund(charge);
         break;
       }
 
-      case "customer.subscription.created":
-      case "customer.subscription.updated": {
+      case "subscription": {
         const subscription = event.data.object as Stripe.Subscription;
-        await handleSubscriptionUpdate(subscription);
+        if (event.type === "customer.subscription.deleted") {
+          await handleSubscriptionCancelled(subscription);
+        } else {
+          await handleSubscriptionUpdate(subscription);
+        }
         break;
       }
 
-      case "customer.subscription.deleted": {
-        const subscription = event.data.object as Stripe.Subscription;
-        await handleSubscriptionCancelled(subscription);
-        break;
-      }
-
-      case "invoice.payment_failed": {
+      case "invoice": {
         const invoice = event.data.object as Stripe.Invoice;
-        await handleInvoicePaymentFailed(invoice);
-        break;
-      }
-
-      case "invoice.payment_succeeded": {
-        const invoice = event.data.object as Stripe.Invoice;
-        await handleInvoicePaymentSucceeded(invoice);
+        if (event.type === "invoice.payment_failed") {
+          await handleInvoicePaymentFailed(invoice);
+        } else {
+          await handleInvoicePaymentSucceeded(invoice);
+        }
         break;
       }
 

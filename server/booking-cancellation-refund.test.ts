@@ -149,6 +149,28 @@ describe("clean booking cancellation refund lifecycle", () => {
     expect(mocks.updatePaymentRefund).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps concurrent repeated refund attempts on one Stripe idempotency key", async () => {
+    mocks.getPaymentByBookingId.mockResolvedValue({
+      id: 90,
+      status: "captured",
+      amount: "25.00",
+      refundAmount: "0.00",
+      stripePaymentIntentId: "pi_concurrent_refund",
+    });
+
+    await Promise.all([
+      bookingRouter.createCaller(context(10, "customer")).cancel({ bookingId: 77, reason: "Concurrent A" }),
+      bookingRouter.createCaller(context(10, "customer")).cancel({ bookingId: 77, reason: "Concurrent B" }),
+    ]);
+
+    expect(mocks.stripeRefundCreate).toHaveBeenCalledTimes(2);
+    const keys = mocks.stripeRefundCreate.mock.calls.map((call) => call[1]?.idempotencyKey);
+    expect(keys).toEqual([
+      "ologycrew-refund-booking-77-payment-90-2500",
+      "ologycrew-refund-booking-77-payment-90-2500",
+    ]);
+  });
+
   it("does not call Stripe for an offline or uncaptured payment", async () => {
     mocks.getPaymentByBookingId.mockResolvedValue({
       id: 89,

@@ -4,7 +4,7 @@ import {
   stripeWebhookLedgerPolicy,
 } from "./db/stripeWebhookEvents";
 import { resolveWebhookPaymentStatus } from "./db/payments";
-import { getWebhookLedgerInput } from "./stripeWebhook";
+import { classifyStripeWebhookRoute, getWebhookLedgerInput } from "./stripeWebhook";
 
 const NOW = new Date("2026-11-07T08:00:00.000Z");
 
@@ -91,5 +91,17 @@ describe("Stripe webhook durable ledger contract", () => {
 
     expect(input.invoiceId).toBe("in_1");
     expect(input.bookingId).toBeNull();
+  });
+
+  it("separates booking checkout, invoice, subscription, refund, and ignored routes", () => {
+    expect(classifyStripeWebhookRoute("checkout.session.completed")).toBe("checkout");
+    expect(classifyStripeWebhookRoute("payment_intent.succeeded")).toBe("payment_intent");
+    expect(classifyStripeWebhookRoute("payment_intent.payment_failed")).toBe("payment_intent");
+    expect(classifyStripeWebhookRoute("invoice.payment_succeeded")).toBe("invoice");
+    expect(classifyStripeWebhookRoute("invoice.payment_failed")).toBe("invoice");
+    expect(classifyStripeWebhookRoute("customer.subscription.updated")).toBe("subscription");
+    expect(classifyStripeWebhookRoute("customer.subscription.deleted")).toBe("subscription");
+    expect(classifyStripeWebhookRoute("charge.refunded")).toBe("refund");
+    expect(classifyStripeWebhookRoute("promotion.created")).toBe("ignored");
   });
 });
