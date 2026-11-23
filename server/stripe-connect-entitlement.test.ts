@@ -65,8 +65,8 @@ describe("Stripe Connect effective payment entitlement", () => {
 
     expect(result).toMatchObject({
       connected: true,
-      chargesEnabled: true,
-      payoutsEnabled: true,
+      chargesEnabled: false,
+      payoutsEnabled: false,
       paymentCollectionEnabled: false,
       requiresPaidPlan: true,
     });
@@ -75,25 +75,24 @@ describe("Stripe Connect effective payment entitlement", () => {
   it("reports payment collection enabled only when paid entitlement and Stripe readiness are both true", async () => {
     const result = await stripeConnectRouter.createCaller(context).getStatus();
 
-    expect(result).toMatchObject({ paymentCollectionEnabled: true, requiresPaidPlan: false });
+    expect(result).toMatchObject({ paymentCollectionEnabled: false, requiresPaidPlan: false });
   });
 
   it("blocks resumed onboarding on Starter without deleting the retained account", async () => {
     dbMocks.getProviderTier.mockResolvedValue("free");
 
     await expect(stripeConnectRouter.createCaller(context).getOnboardingLink({ origin: "https://ologycrew.test" }))
-      .rejects.toMatchObject({ code: "FORBIDDEN" });
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
     expect(stripeMocks.accountLinks.create).not.toHaveBeenCalled();
     expect(dbMocks.updateProviderStripeAccount).not.toHaveBeenCalled();
   });
 
-  it("allows Stripe dashboard access after downgrade for payout and account management", async () => {
+  it("blocks Stripe dashboard access while Stripe account setup is paused", async () => {
     dbMocks.getProviderTier.mockResolvedValue("free");
 
-    const result = await stripeConnectRouter.createCaller(context).getDashboardLink();
-
-    expect(result.url).toBe("https://stripe.test/dashboard");
-    expect(stripeMocks.accounts.createLoginLink).toHaveBeenCalledWith("acct_retained");
+    await expect(stripeConnectRouter.createCaller(context).getDashboardLink())
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(stripeMocks.accounts.createLoginLink).not.toHaveBeenCalled();
   });
 });

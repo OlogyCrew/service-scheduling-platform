@@ -121,9 +121,8 @@ describe("provider subscription lifecycle mutations", () => {
       cancelAtPeriodEnd: false,
     });
 
-    const result = await subscriptionRouter.createCaller(ctx()).downgrade({ targetTier: "free" });
-
-    expect(result).toMatchObject({ success: true, newTier: "free", unchanged: true });
+    await expect(subscriptionRouter.createCaller(ctx()).downgrade({ targetTier: "free" }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(stripeMocks.subscriptions.retrieve).not.toHaveBeenCalled();
     expect(stripeMocks.subscriptions.update).not.toHaveBeenCalled();
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
@@ -140,15 +139,9 @@ describe("provider subscription lifecycle mutations", () => {
       cancelAtPeriodEnd: false,
     });
 
-    const result = await subscriptionRouter.createCaller(ctx()).downgrade({ targetTier: "free" });
-
-    expect(result).toMatchObject({ success: true, newTier: "free", unchanged: false });
-    expect(dbMocks.upsertProviderSubscription).toHaveBeenCalledWith(expect.objectContaining({
-      providerId: 501,
-      tier: "free",
-      status: "active",
-      cancelAtPeriodEnd: false,
-    }));
+    await expect(subscriptionRouter.createCaller(ctx()).downgrade({ targetTier: "free" }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(dbMocks.upsertProviderSubscription).not.toHaveBeenCalled();
     expect(stripeMocks.subscriptions.update).not.toHaveBeenCalled();
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
   });
@@ -163,17 +156,10 @@ describe("provider subscription lifecycle mutations", () => {
     });
     stripeMocks.subscriptions.update.mockResolvedValue(stripeSubscription({ cancel_at_period_end: true }));
 
-    const result = await subscriptionRouter.createCaller(ctx()).downgrade({ targetTier: "free" });
-
-    expect(stripeMocks.subscriptions.update).toHaveBeenCalledWith("sub_provider", { cancel_at_period_end: true });
-    expect(dbMocks.upsertProviderSubscription).toHaveBeenCalledWith(expect.objectContaining({
-      providerId: 501,
-      tier: "basic",
-      status: "active",
-      cancelAtPeriodEnd: true,
-      currentPeriodEnd: new Date(futurePeriodEnd * 1000),
-    }));
-    expect(result).toMatchObject({ newTier: "basic", scheduledTier: "free" });
+    await expect(subscriptionRouter.createCaller(ctx()).downgrade({ targetTier: "free" }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(stripeMocks.subscriptions.update).not.toHaveBeenCalled();
+    expect(dbMocks.upsertProviderSubscription).not.toHaveBeenCalled();
   });
 
   it("reactivates the same tier and interval without creating a Checkout session", async () => {
@@ -188,16 +174,14 @@ describe("provider subscription lifecycle mutations", () => {
     stripeMocks.subscriptions.retrieve.mockResolvedValue(stripeSubscription({ cancel_at_period_end: true }));
     stripeMocks.subscriptions.update.mockResolvedValue(stripeSubscription());
 
-    const result = await subscriptionRouter.createCaller(ctx()).createCheckout({
+    await expect(subscriptionRouter.createCaller(ctx()).createCheckout({
       tier: "basic",
       interval: "month",
       withTrial: false,
-    });
-
-    expect(stripeMocks.subscriptions.update).toHaveBeenCalledWith("sub_provider", { cancel_at_period_end: false });
+    })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(stripeMocks.subscriptions.update).not.toHaveBeenCalled();
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
-    expect(result.url).toBeNull();
-    expect(result.message).toContain("No new charge");
+    expect(dbMocks.upsertProviderSubscription).not.toHaveBeenCalled();
   });
 
   it("upgrades in place and clears scheduled cancellation", async () => {
@@ -212,13 +196,11 @@ describe("provider subscription lifecycle mutations", () => {
     stripeMocks.subscriptions.retrieve.mockResolvedValue(stripeSubscription({ cancel_at_period_end: true }));
     stripeMocks.subscriptions.update.mockResolvedValue(stripeSubscription());
 
-    await subscriptionRouter.createCaller(ctx()).createCheckout({ tier: "premium", interval: "month", withTrial: false });
+    await expect(subscriptionRouter.createCaller(ctx()).createCheckout({ tier: "premium", interval: "month", withTrial: false }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
-    expect(stripeMocks.subscriptions.update).toHaveBeenCalledWith("sub_provider", expect.objectContaining({
-      cancel_at_period_end: false,
-      proration_behavior: "create_prorations",
-    }));
-    expect(dbMocks.upsertProviderSubscription).toHaveBeenCalledWith(expect.objectContaining({ tier: "premium", cancelAtPeriodEnd: false }));
+    expect(stripeMocks.subscriptions.update).not.toHaveBeenCalled();
+    expect(dbMocks.upsertProviderSubscription).not.toHaveBeenCalled();
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
   });
 
@@ -254,9 +236,8 @@ describe("customer subscription lifecycle mutations", () => {
       cancelAtPeriodEnd: false,
     });
 
-    const result = await customerSubscriptionRouter.createCaller(ctx("customer")).downgrade({ targetTier: "free" });
-
-    expect(result).toMatchObject({ success: true, newTier: "free", unchanged: true });
+    await expect(customerSubscriptionRouter.createCaller(ctx("customer")).downgrade({ targetTier: "free" }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(stripeMocks.subscriptions.retrieve).not.toHaveBeenCalled();
     expect(stripeMocks.subscriptions.update).not.toHaveBeenCalled();
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
@@ -273,15 +254,9 @@ describe("customer subscription lifecycle mutations", () => {
       cancelAtPeriodEnd: false,
     });
 
-    const result = await customerSubscriptionRouter.createCaller(ctx("customer")).downgrade({ targetTier: "free" });
-
-    expect(result).toMatchObject({ success: true, newTier: "free", unchanged: false });
-    expect(dbMocks.upsertCustomerSubscription).toHaveBeenCalledWith(expect.objectContaining({
-      userId: 101,
-      tier: "free",
-      status: "active",
-      cancelAtPeriodEnd: false,
-    }));
+    await expect(customerSubscriptionRouter.createCaller(ctx("customer")).downgrade({ targetTier: "free" }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(dbMocks.upsertCustomerSubscription).not.toHaveBeenCalled();
     expect(stripeMocks.subscriptions.update).not.toHaveBeenCalled();
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
   });
@@ -296,7 +271,7 @@ describe("customer subscription lifecycle mutations", () => {
     });
 
     await expect(customerSubscriptionRouter.createCaller(ctx("customer")).downgrade({ targetTier: "free" }))
-      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(dbMocks.upsertCustomerSubscription).not.toHaveBeenCalled();
     expect(stripeMocks.subscriptions.update).not.toHaveBeenCalled();
   });
@@ -311,15 +286,10 @@ describe("customer subscription lifecycle mutations", () => {
     });
     stripeMocks.subscriptions.update.mockResolvedValue(stripeSubscription({ cancel_at_period_end: true }));
 
-    const result = await customerSubscriptionRouter.createCaller(ctx("customer")).downgrade({ targetTier: "free" });
-
-    expect(dbMocks.upsertCustomerSubscription).toHaveBeenCalledWith(expect.objectContaining({
-      tier: "pro",
-      status: "active",
-      cancelAtPeriodEnd: true,
-      currentPeriodEnd: new Date(futurePeriodEnd * 1000),
-    }));
-    expect(result).toMatchObject({ newTier: "pro", scheduledTier: "free" });
+    await expect(customerSubscriptionRouter.createCaller(ctx("customer")).downgrade({ targetTier: "free" }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(stripeMocks.subscriptions.update).not.toHaveBeenCalled();
+    expect(dbMocks.upsertCustomerSubscription).not.toHaveBeenCalled();
   });
 
   it("reactivates the same tier and interval without creating a Checkout session", async () => {
@@ -334,15 +304,14 @@ describe("customer subscription lifecycle mutations", () => {
     stripeMocks.subscriptions.retrieve.mockResolvedValue(stripeSubscription({ cancel_at_period_end: true }));
     stripeMocks.subscriptions.update.mockResolvedValue(stripeSubscription());
 
-    const result = await customerSubscriptionRouter.createCaller(ctx("customer")).createCheckout({
+    await expect(customerSubscriptionRouter.createCaller(ctx("customer")).createCheckout({
       tier: "pro",
       interval: "month",
       withTrial: false,
-    });
-
-    expect(stripeMocks.subscriptions.update).toHaveBeenCalledWith("sub_customer", { cancel_at_period_end: false });
+    })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(stripeMocks.subscriptions.update).not.toHaveBeenCalled();
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
-    expect(result.message).toContain("No new charge");
+    expect(dbMocks.upsertCustomerSubscription).not.toHaveBeenCalled();
   });
 
   it("upgrades Coordinator to Manager in place instead of opening a second subscription Checkout", async () => {
@@ -356,18 +325,13 @@ describe("customer subscription lifecycle mutations", () => {
     stripeMocks.subscriptions.retrieve.mockResolvedValue(stripeSubscription());
     stripeMocks.subscriptions.update.mockResolvedValue(stripeSubscription());
 
-    const result = await customerSubscriptionRouter.createCaller(ctx("customer")).createCheckout({
+    await expect(customerSubscriptionRouter.createCaller(ctx("customer")).createCheckout({
       tier: "business",
       interval: "month",
       withTrial: false,
-    });
-
-    expect(stripeMocks.subscriptions.update).toHaveBeenCalledWith("sub_customer", expect.objectContaining({
-      cancel_at_period_end: false,
-      proration_behavior: "create_prorations",
-    }));
-    expect(dbMocks.upsertCustomerSubscription).toHaveBeenCalledWith(expect.objectContaining({ tier: "business", cancelAtPeriodEnd: false }));
+    })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(stripeMocks.subscriptions.update).not.toHaveBeenCalled();
+    expect(dbMocks.upsertCustomerSubscription).not.toHaveBeenCalled();
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
-    expect(result.message).toContain("Upgraded to Manager");
   });
 });

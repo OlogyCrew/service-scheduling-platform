@@ -94,11 +94,11 @@ describe("booking payment entitlement boundary", () => {
     stripeMocks.checkout.sessions.create.mockResolvedValue({ id: "cs_booking", url: "https://checkout.stripe.test/session" });
   });
 
-  it("denies Starter providers even when a retained Stripe account remains connected", async () => {
+  it("denies Starter providers before any Stripe or referral-credit mutation", async () => {
     dbMocks.getProviderTier.mockResolvedValue("free");
 
     await expect(stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id }))
-      .rejects.toMatchObject({ code: "FORBIDDEN" });
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
     expect(referralMocks.spendReferralCredits).not.toHaveBeenCalled();
@@ -112,7 +112,7 @@ describe("booking payment entitlement boundary", () => {
     });
 
     await expect(stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id }))
-      .rejects.toMatchObject({ code: "FORBIDDEN" });
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
     expect(referralMocks.spendReferralCredits).not.toHaveBeenCalled();
@@ -129,7 +129,7 @@ describe("booking payment entitlement boundary", () => {
     });
 
     await expect(stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id }))
-      .rejects.toMatchObject({ code: "FORBIDDEN" });
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
     expect(referralMocks.spendReferralCredits).not.toHaveBeenCalled();
@@ -151,62 +151,48 @@ describe("booking payment entitlement boundary", () => {
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
   });
 
-  it("creates every real charge as a destination payment to an entitled provider", async () => {
-    const result = await stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id });
-
-    expect(stripeMocks.checkout.sessions.create).toHaveBeenCalledWith(expect.objectContaining({
-      customer: "cus_booking_customer",
-      billing_address_collection: "required",
-      customer_update: { name: "auto", address: "auto" },
-      payment_intent_data: expect.objectContaining({
-        application_fee_amount: 100,
-        transfer_data: { destination: "acct_provider" },
-      }),
-    }), expect.objectContaining({ idempotencyKey: expect.stringContaining("ologycrew-booking-9001-full") }));
-    expect(result.url).toBe("https://checkout.stripe.test/session");
+  it("rejects provider collection before creating a destination Checkout session", async () => {
+    await expect(stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
+    expect(stripeMocks.customers.create).not.toHaveBeenCalled();
+    expect(referralMocks.spendReferralCredits).not.toHaveBeenCalled();
   });
 
-  it("creates and persists a Stripe Customer when the user has none yet", async () => {
+  it("does not create or persist a Stripe Customer while provider collection is paused", async () => {
     dbMocks.getUserById.mockResolvedValue({ stripeCustomerId: null });
     stripeMocks.customers.create.mockResolvedValue({ id: "cus_new_booking_customer" });
 
-    await stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id });
-
-    expect(stripeMocks.customers.create).toHaveBeenCalledWith(expect.objectContaining({
-      email: "customer@example.com",
-      name: "Booking Customer",
-      metadata: { userId: "101", type: "customer" },
-    }), { idempotencyKey: "ologycrew-customer-101" });
-    expect(dbMocks.updateUserStripeCustomerId).toHaveBeenCalledWith(101, "cus_new_booking_customer");
-    expect(stripeMocks.checkout.sessions.create).toHaveBeenCalledWith(expect.objectContaining({ customer: "cus_new_booking_customer" }), expect.any(Object));
+    await expect(stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(stripeMocks.customers.create).not.toHaveBeenCalled();
+    expect(dbMocks.updateUserStripeCustomerId).not.toHaveBeenCalled();
+    expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
   });
 
-  it("uses the same idempotency keys when first-time payment requests race", async () => {
+  it("rejects concurrent first-time payment requests before any Stripe side effect", async () => {
     dbMocks.getUserById.mockResolvedValue({ stripeCustomerId: null });
     stripeMocks.customers.create.mockResolvedValue({ id: "cus_race_safe" });
 
-    await Promise.all(Array.from({ length: 50 }, () =>
+    await expect(Promise.all(Array.from({ length: 50 }, () =>
       stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id })
-    ));
+    ))).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
-    expect(stripeMocks.customers.create).toHaveBeenCalledTimes(50);
-    expect(stripeMocks.customers.create.mock.calls.map(([, options]) => options.idempotencyKey))
-      .toEqual(Array(50).fill("ologycrew-customer-101"));
-    expect(stripeMocks.checkout.sessions.create).toHaveBeenCalledTimes(50);
-    expect(stripeMocks.checkout.sessions.create.mock.calls.map(([, options]) => options.idempotencyKey))
-      .toEqual(Array(50).fill("ologycrew-booking-9001-full-10000-0.00"));
+    expect(stripeMocks.customers.create).not.toHaveBeenCalled();
+    expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
+    expect(dbMocks.updateUserStripeCustomerId).not.toHaveBeenCalled();
   });
 
   it("does not create a second Stripe checkout after the same payment was captured", async () => {
     dbMocks.getPaymentByBookingId.mockResolvedValue({ status: "captured", paymentType: "full" });
 
     await expect(stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id }))
-      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
     expect(referralMocks.spendReferralCredits).not.toHaveBeenCalled();
   });
 
-  it("keeps the official demo bypass free and never creates a Stripe charge", async () => {
+  it("rejects even the official demo Checkout path while online provider collection is paused", async () => {
     dbMocks.getProviderById.mockResolvedValue({
       id: 501,
       businessName: "OlogyCrew Demo",
@@ -216,10 +202,9 @@ describe("booking payment entitlement boundary", () => {
       payoutEnabled: false,
     });
 
-    const result = await stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id });
-
-    expect(result).toMatchObject({ url: null, isDemo: true });
-    expect(dbMocks.updateBookingStatus).toHaveBeenCalledWith(booking.id, "confirmed", expect.any(Object));
+    await expect(stripeRouter.createCaller(ctx()).createCheckoutSession({ bookingId: booking.id }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(dbMocks.updateBookingStatus).not.toHaveBeenCalled();
     expect(stripeMocks.checkout.sessions.create).not.toHaveBeenCalled();
   });
 });

@@ -332,7 +332,7 @@ describe("Stripe Connect & Public Profile", () => {
       const ctx = provCtx(providerUserId8, "NoStripe Provider");
       const caller = appRouter.createCaller(ctx);
 
-      await expect(caller.stripeConnect.getDashboardLink()).rejects.toThrow("No Stripe account connected");
+      await expect(caller.stripeConnect.getDashboardLink()).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     });
   });
 });
